@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<!--
+  PORTFOLIO D'ERNEST AFATON - version 1
+  Site statique (HTML + CSS + JS), sans framework, prêt pour GitHub Pages.
+
+  Références :
+  - Structure HTML : https://developer.mozilla.org/fr/docs/Learn/HTML/Introduction_to_HTML/Document_and_website_structure
+  - Éléments sémantiques (header, main, section...) : https://developer.mozilla.org/fr/docs/Glossary/Semantics#semantics_in_html
+-->
+<!-- L'attribut lang aide les lecteurs d'écran et les moteurs de recherche :
+     https://developer.mozilla.org/fr/docs/Web/HTML/Global_attributes/lang -->
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <!-- Rend le site adaptable au mobile :
+       https://developer.mozilla.org/fr/docs/Web/HTML/Viewport_meta_tag -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Ernest AFATON - Développeur en formation</title>
+  <!-- Description affichée dans les résultats de recherche :
+       https://developer.mozilla.org/fr/docs/Web/HTML/Element/meta/name -->
+  <meta name="description" content="Portfolio d'Ernest AFATON, étudiant en Bachelor Informatique à l'EPSI Lyon, développement web, Python, IoT et cybersécurité. Recherche un stage de deux mois.">
+  <meta name="theme-color" content="#090014">
+
+  <!-- Polices Google Fonts. preconnect accélère la connexion :
+       https://developer.mozilla.org/fr/docs/Web/HTML/Attributes/rel/preconnect -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Hanken+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
+  <!-- defer : le script s'exécute après le chargement du HTML :
+       https://developer.mozilla.org/fr/docs/Web/HTML/Element/script#defer -->
+  <script src="script.js" defer></script>
+</head>
+
+<body>
+  <!-- Lien d'évitement pour la navigation au clavier (accessibilité) :
+       https://developer.mozilla.org/fr/docs/Web/Accessibility/Understanding_WCAG/Operable#2.4_navigable -->
+  <a class="skip" href="#contenu">Aller au contenu</a>
+
+  <header class="site-header">
+    <a class="logo" href="#accueil" aria-label="Retour en haut de la page">EA</a>
+    <nav aria-label="Navigation principale">
+      <ul>
+        <li><a href="#apropos">À propos</a></li>
+        <li><a href="#competences">Compétences</a></li>
+        <li><a href="#projets">Projets</a></li>
+        <li><a href="#parcours">Parcours</a></li>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="contenu">
+
+    <!-- ============ ACCUEIL ============ -->
+    <section class="hero" id="accueil">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-inner">
+        <p class="status">Disponible pour un stage de deux mois</p>
+        <h1>Ernest AFATON</h1>
+        <p class="hero-role">Étudiant en Bachelor Informatique, je construis des sites web, des outils Python et des objets connectés.</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#projets">Voir mes projets</a>
+          <a class="btn" href="#contact">Me contacter</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ À PROPOS ============ -->
+    <section id="apropos" class="section">
+      <h2>À propos</h2>
+      <div class="prose">
+        <p>Je suis en deuxième année de Bachelor Informatique à l'EPSI Lyon, parcours Développement Systèmes et Réseaux. Je développe en web (HTML, CSS, JavaScript, PHP), en Python et je m'intéresse à la cybersécurité.</p>
+        <p>Je préfère comprendre comment les choses fonctionnent : j'ai construit un framework PHP à partir de l'architecture et de la configuration, et un objet connecté qui lit des badges NFC. Je cherche un stage de deux mois pour mettre ça en pratique dans une équipe.</p>
+      </div>
+    </section>
+
+    <!-- ============ COMPÉTENCES ============ -->
+    <section id="competences" class="section">
+      <h2>Compétences</h2>
+      <!-- Liste de définitions : https://developer.mozilla.org/fr/docs/Web/HTML/Element/dl -->
+      <dl class="skills">
+        <div>
+          <dt>Web</dt>
+          <dd>HTML, CSS, JavaScript, PHP, frameworks PHP</dd>
+        </div>
+        <div>
+          <dt>Python</dt>
+          <dd>Flask, Django</dd>
+        </div>
+        <div>
+          <dt>Autres langages</dt>
+          <dd>Bases de Java, C#</dd>
+        </div>
+        <div>
+          <dt>IoT et embarqué</dt>
+          <dd>Raspberry, Arduino, lecture NFC</dd>
+        </div>
+        <div>
+          <dt>Sécurité</dt>
+          <dd>Cybersécurité</dd>
+        </div>
+        <div>
+          <dt>Fabrication</dt>
+          <dd>Impression 3D, dont résine</dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- ============ PROJETS ============ -->
+    <section id="projets" class="section">
+      <h2>Projets</h2>
+      <ul class="projects">
+
+        <li class="project">
+          <h3>Boîte à lecture NFC (workshop international IoT)</h3>
+          <p>Projet de groupe : une boîte qui lit un badge NFC sur un Raspberry et pilote des moteurs via un circuit Arduino. Le code de configuration des moteurs est en C#, et les interfaces d'affichage au démarrage sont faites avec Tkinter.</p>
+          <p class="tags">Raspberry, Arduino, NFC, C#, Tkinter</p>
+        </li>
+
+        <li class="project">
+          <h3>Site web moderne avec Flask et Django</h3>
+          <p>Projet de groupe en Python : un site web moderne construit avec les frameworks Flask et Django.</p>
+          <p class="tags">Python, Flask, Django</p>
+        </li>
+
+        <li class="project">
+          <h3>Framework PHP</h3>
+          <p>Reconstruction d'un site à partir d'un framework écrit sans librairie, fondé sur une architecture et une configuration structurées.</p>
+          <p class="tags">PHP, architecture</p>
+        </li>
+
+        <li class="project">
+          <h3>Task Manager</h3>
+          <p>Application de gestion de tâches développée avec Symfony.</p>
+          <p class="tags">PHP, Symfony</p>
+          <!-- rel="noopener" : bonne pratique pour les liens externes :
+               https://developer.mozilla.org/fr/docs/Web/HTML/Attributes/rel/noopener -->
+          <a class="project-link" href="https://github.com/ernestjesutinafaton-maker/Task_Manager" target="_blank" rel="noopener">Voir le code sur GitHub</a>
+        </li>
+
+        <li class="project">
+          <h3>RPG Re:Zero</h3>
+          <p>Mini jeu de rôle avec une interface web, construit autour du DOM et des événements JavaScript.</p>
+          <p class="tags">HTML, CSS, JavaScript</p>
+          <a class="project-link" href="https://github.com/ernestjesutinafaton-maker/RPG-REZERO" target="_blank" rel="noopener">Voir le code sur GitHub</a>
+        </li>
+
+      </ul>
+    </section>
+
+    <!-- ============ PARCOURS ============ -->
+    <section id="parcours" class="section">
+      <h2>Parcours</h2>
+      <ol class="timeline">
+        <li>
+          <p class="when">2025 - 2026</p>
+          <h3>Bachelor Informatique, 2e année</h3>
+          <p>EPSI Lyon, parcours Développement Systèmes et Réseaux</p>
+        </li>
+        <li>
+          <p class="when">2024 - 2025</p>
+          <h3>Baccalauréat Scientifique, mention Bien</h3>
+          <p>La Prospérité, Bénin</p>
+        </li>
+      </ol>
+    </section>
+
+    <!-- ============ CONTACT ============ -->
+    <section id="contact" class="section">
+      <h2>Contact</h2>
+      <p class="prose">Je cherche un stage de deux mois en informatique. Le plus simple pour me joindre est l'email.</p>
+      <div class="hero-actions">
+        <!-- Lien mailto : https://developer.mozilla.org/fr/docs/Web/HTML/Attributes/href#mailto -->
+        <a class="btn btn-primary" href="mailto:ernestjesutinafaton@gmail.com">Envoyer un email</a>
+        <a class="btn" href="https://github.com/ernestjesutinafaton-maker" target="_blank" rel="noopener">Mon profil GitHub</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <!-- L'année est remplie par script.js -->
+    <p>Ernest AFATON, <span id="annee">2026</span></p>
+  </footer>
+</body>
+</html>
