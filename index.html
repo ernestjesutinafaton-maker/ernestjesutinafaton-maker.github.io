@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  PORTFOLIO D'ERNEST AFATON - version 1
+  PORTFOLIO D'ERNEST AFATON - version 2
   Site statique (HTML + CSS + JS), sans framework, prêt pour GitHub Pages.
 
   Références :
@@ -19,8 +19,8 @@
   <title>Ernest AFATON - Développeur en formation</title>
   <!-- Description affichée dans les résultats de recherche :
        https://developer.mozilla.org/fr/docs/Web/HTML/Element/meta/name -->
-  <meta name="description" content="Portfolio d'Ernest AFATON, étudiant en Bachelor Informatique à l'EPSI Lyon, développement web, Python, IoT et cybersécurité. Recherche un stage de deux mois.">
-  <meta name="theme-color" content="#090014">
+  <meta name="description" content="Portfolio d'Ernest AFATON, étudiant en Bachelor Informatique à l'EPSI Lyon : développement web et mobile, Python, réseaux et IoT. Recherche un stage court.">
+  <meta name="theme-color" content="#ffffff">
 
   <!-- Polices Google Fonts. preconnect accélère la connexion :
        https://developer.mozilla.org/fr/docs/Web/HTML/Attributes/rel/preconnect -->
@@ -56,11 +56,10 @@
 
     <!-- ============ ACCUEIL ============ -->
     <section class="hero" id="accueil">
-      <div class="hero-grid" aria-hidden="true"></div>
       <div class="hero-inner">
-        <p class="status">Disponible pour un stage de deux mois</p>
+        <p class="status">Disponible pour un stage court</p>
         <h1>Ernest AFATON</h1>
-        <p class="hero-role">Étudiant en Bachelor Informatique, je construis des sites web, des outils Python et des objets connectés.</p>
+        <p class="hero-role">Étudiant en Bachelor Informatique, je construis des applications web et mobiles complètes (React, Angular, Laravel, Symfony, React Native), des infrastructures système et réseau, et des objets connectés.</p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="#projets">Voir mes projets</a>
           <a class="btn" href="#contact">Me contacter</a>
@@ -72,8 +71,8 @@
     <section id="apropos" class="section">
       <h2>À propos</h2>
       <div class="prose">
-        <p>Je suis en deuxième année de Bachelor Informatique à l'EPSI Lyon, parcours Développement Systèmes et Réseaux. Je développe en web (HTML, CSS, JavaScript, PHP), en Python et je m'intéresse à la cybersécurité.</p>
-        <p>Je préfère comprendre comment les choses fonctionnent : j'ai construit un framework PHP à partir de l'architecture et de la configuration, et un objet connecté qui lit des badges NFC. Je cherche un stage de deux mois pour mettre ça en pratique dans une équipe.</p>
+        <p>Je suis en deuxième année de Bachelor Informatique à l'EPSI Lyon, parcours Développement Systèmes et Réseaux. Je développe en web (HTML, CSS, JavaScript/TypeScript, PHP, Python) et en mobile, et je m'intéresse à l'administration système et réseau ainsi qu'à la cybersécurité.</p>
+        <p>Je préfère comprendre comment les choses fonctionnent : j'ai construit un framework PHP à partir de l'architecture et de la configuration, une application de caisse hors-ligne pour les commerces, une plateforme de paiement des frais scolaires, et déployé seul l'infrastructure système complète d'un NAS en entreprise. Je cherche un stage court pour mettre ces compétences en pratique dans une équipe.</p>
       </div>
     </section>
 
@@ -83,28 +82,36 @@
       <!-- Liste de définitions : https://developer.mozilla.org/fr/docs/Web/HTML/Element/dl -->
       <dl class="skills">
         <div>
-          <dt>Web</dt>
-          <dd>HTML, CSS, JavaScript, PHP, frameworks PHP</dd>
+          <dt>Développement web</dt>
+          <dd>HTML, CSS, JavaScript, TypeScript, PHP, Laravel, Symfony, Next.js/React, Angular, Vue.js, Nest.js, framework PHP maison</dd>
+        </div>
+        <div>
+          <dt>Mobile et multiplateforme</dt>
+          <dd>React Native/Expo, Tauri, stockage hors-ligne et synchronisation (SQLite, Supabase, PowerSync)</dd>
         </div>
         <div>
           <dt>Python</dt>
-          <dd>Flask, Django</dd>
+          <dd>Flask, Django, scripts d'automatisation</dd>
         </div>
         <div>
-          <dt>Autres langages</dt>
-          <dd>Bases de Java, C#</dd>
+          <dt>Backend et données</dt>
+          <dd>PostgreSQL, MySQL/MariaDB, SQLite, API REST, Supabase, intégrations de paiement Mobile Money</dd>
+        </div>
+        <div>
+          <dt>Réseaux et systèmes</dt>
+          <dd>Active Directory, haute disponibilité HSRP/VRRP, proxy Squid, GLPI, Linux, Docker, VPN, NAS</dd>
         </div>
         <div>
           <dt>IoT et embarqué</dt>
-          <dd>Raspberry, Arduino, NFC</dd>
+          <dd>Raspberry Pi, Arduino, capteurs, NFC, Tkinter</dd>
         </div>
         <div>
-          <dt>Sécurité</dt>
-          <dd>Cybersécurité</dd>
+          <dt>Gestion de projet</dt>
+          <dd>Agile/Scrum, Scrum Master, GitHub Projects, intégration continue</dd>
         </div>
         <div>
-          <dt>Fabrication</dt>
-          <dd>Impression 3D, dont résine</dd>
+          <dt>Fabrication numérique</dt>
+          <dd>Impression 3D, FDM et résine</dd>
         </div>
       </dl>
     </section>
@@ -115,30 +122,51 @@
       <ul class="projects">
 
         <li class="project">
-          <h3>Boîte à lecture NFC (workshop international IoT)</h3>
-          <p>Projet de groupe : une boîte qui lit un badge NFC sur un Raspberry et pilote des moteurs via un circuit Arduino. Le code de configuration des moteurs est en C#, et les interfaces d'affichage au démarrage sont faites avec Tkinter.</p>
-          <p class="tags">Raspberry, Arduino, NFC, C#, Tkinter</p>
+          <h3>Boutik</h3>
+          <p>Application multiplateforme (Android, iPhone, ordinateur) de gestion de caisse, de stock et de ventes à crédit pour commerces, fonctionnant hors connexion et se synchronisant automatiquement avec le serveur.</p>
+          <p class="tags">React Native/Expo, Tauri, Supabase, PowerSync</p>
+          <a class="project-link" href="https://boutik-services.vercel.app" target="_blank" rel="noopener">Voir le site</a>
+          <a class="project-link" href="https://github.com/ernestjesutinafaton-maker/Boutik-presentation" target="_blank" rel="noopener">Présentation sur GitHub</a>
         </li>
 
         <li class="project">
-          <h3>Site web moderne avec Flask et Django</h3>
-          <p>Projet de groupe en Python : un site web moderne construit avec les frameworks Flask et Django.</p>
-          <p class="tags">Python, Flask, Django</p>
+          <h3>ÉcoPay</h3>
+          <p>Plateforme SaaS de gestion et d'encaissement des frais de scolarité pour écoles privées d'Afrique de l'Ouest, avec paiements Mobile Money intégrés et rappels automatiques.</p>
+          <p class="tags">Next.js, Supabase, FedaPay, CinetPay</p>
+          <a class="project-link" href="https://ecopay-services.vercel.app" target="_blank" rel="noopener">Voir le site</a>
+          <a class="project-link" href="https://github.com/ernestjesutinafaton-maker/EcoPay-presentation" target="_blank" rel="noopener">Présentation sur GitHub</a>
+        </li>
+
+        <li class="project">
+          <h3>Stage chez MyDil : InfraHub et NAS auto-hébergé</h3>
+          <p>Développement complet d'une plateforme de gestion de tickets étudiants (InfraHub), et déploiement seul d'un NAS auto-hébergé avec conteneurisation Docker et VPN chiffré.</p>
+          <p class="tags">Laravel, PostgreSQL, OpenMediaVault, Docker, Tailscale</p>
+        </li>
+
+        <li class="project">
+          <h3>TodoList Symfony</h3>
+          <p>Application de gestion de tâches multi-utilisateurs développée avec Symfony et Doctrine ORM.</p>
+          <p class="tags">PHP, Symfony, Doctrine, Twig, SQLite</p>
+          <a class="project-link" href="https://github.com/ernestjesutinafaton-maker/Task_Manager" target="_blank" rel="noopener">Voir le code sur GitHub</a>
+        </li>
+
+        <li class="project">
+          <h3>Budget Étudiant</h3>
+          <p>Application de suivi de dépenses développée en Angular, avec tests unitaires.</p>
+          <p class="tags">Angular, TypeScript</p>
+          <a class="project-link" href="https://github.com/ernestjesutinafaton-maker/Budget-Etu" target="_blank" rel="noopener">Voir le code sur GitHub</a>
+        </li>
+
+        <li class="project">
+          <h3>Boîte à lecture NFC (workshop national IoT)</h3>
+          <p>Projet de groupe, 2<sup>e</sup> place au podium : une boîte qui lit un badge NFC sur un Raspberry Pi et pilote des servomoteurs via un circuit Arduino, avec une interface Tkinter au démarrage.</p>
+          <p class="tags">Raspberry Pi, Arduino, NFC, C++, Tkinter</p>
         </li>
 
         <li class="project">
           <h3>Framework PHP</h3>
           <p>Reconstruction d'un site à partir d'un framework écrit sans librairie, fondé sur une architecture et une configuration structurées.</p>
-          <p class="tags">PHP, architecture</p>
-        </li>
-
-        <li class="project">
-          <h3>Task Manager</h3>
-          <p>Application de gestion de tâches développée avec Symfony.</p>
-          <p class="tags">PHP, Symfony</p>
-          <!-- rel="noopener" : bonne pratique pour les liens externes :
-               https://developer.mozilla.org/fr/docs/Web/HTML/Attributes/rel/noopener -->
-          <a class="project-link" href="https://github.com/ernestjesutinafaton-maker/Task_Manager" target="_blank" rel="noopener">Voir le code sur GitHub</a>
+          <p class="tags">PHP, architecture MVC</p>
         </li>
 
         <li class="project">
@@ -156,9 +184,14 @@
       <h2>Parcours</h2>
       <ol class="timeline">
         <li>
-          <p class="when">2025 - 2026</p>
-          <h3>Bachelor Informatique, 2e année</h3>
+          <p class="when">2025 - 2028</p>
+          <h3>Bachelor Informatique</h3>
           <p>EPSI Lyon, parcours Développement Systèmes et Réseaux</p>
+        </li>
+        <li>
+          <p class="when">Avril - juin 2026</p>
+          <h3>Stage développeur / assistant Fablab</h3>
+          <p>MyDil (Digital Innovation Lab) : développement web, infrastructure système et réseau</p>
         </li>
         <li>
           <p class="when">2024 - 2025</p>
@@ -171,10 +204,11 @@
     <!-- ============ CONTACT ============ -->
     <section id="contact" class="section">
       <h2>Contact</h2>
-      <p class="prose">Je cherche un stage de deux mois en informatique. Le plus simple pour me joindre est l'email.</p>
+      <p class="prose">Je cherche un stage court en informatique. Le plus simple pour me joindre est l'email ou LinkedIn.</p>
       <div class="hero-actions">
         <!-- Lien mailto : https://developer.mozilla.org/fr/docs/Web/HTML/Attributes/href#mailto -->
         <a class="btn btn-primary" href="mailto:ernestjesutinafaton@gmail.com">Envoyer un email</a>
+        <a class="btn" href="https://linkedin.com/in/ernest-afaton-1280a4361/" target="_blank" rel="noopener">Mon profil LinkedIn</a>
         <a class="btn" href="https://github.com/ernestjesutinafaton-maker" target="_blank" rel="noopener">Mon profil GitHub</a>
       </div>
     </section>

@@ -1,5 +1,6 @@
 /*
   PORTFOLIO D'ERNEST AFATON - style.css
+  Thème clair et simple.
 
   Références principales :
   - Variables CSS (custom properties) : https://developer.mozilla.org/fr/docs/Web/CSS/Using_CSS_custom_properties
@@ -7,16 +8,15 @@
   - Grid : https://developer.mozilla.org/fr/docs/Web/CSS/CSS_grid_layout
 */
 
-/* ---------- 1. Variables : la palette du profil GitHub ---------- */
+/* ---------- 1. Variables ---------- */
 :root {
-  --fond: #090014;          /* fond principal */
-  --surface: #120726;       /* léger relief pour les zones secondaires */
-  --texte: #e5e7eb;
-  --texte-doux: #aaa5bf;    /* texte secondaire, contraste suffisant sur --fond */
-  --violet: #8b5cf6;
-  --magenta: #d946ef;
-  --cyan: #22d3ee;
-  --ligne: rgba(139, 92, 246, 0.28);
+  --fond: #ffffff;          /* fond principal */
+  --surface: #f5f7fa;       /* léger relief pour les zones secondaires */
+  --texte: #1a1d23;
+  --texte-doux: #5b616e;    /* texte secondaire, contraste suffisant sur --fond */
+  --accent: #2563eb;
+  --accent-fonce: #1d4ed8;
+  --ligne: #e2e5eb;
 
   --police-titre: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
   --police-texte: "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
@@ -52,16 +52,17 @@ h1, h2, h3 {
   font-family: var(--police-titre);
   line-height: 1.15;
   margin: 0;
+  color: var(--texte);
 }
 
 p { margin: 0 0 1rem; }
 
-a { color: var(--cyan); }
+a { color: var(--accent); }
 
 /* Focus clavier bien visible :
    https://developer.mozilla.org/fr/docs/Web/CSS/:focus-visible */
 :focus-visible {
-  outline: 2px solid var(--cyan);
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
@@ -70,8 +71,8 @@ a { color: var(--cyan); }
   position: absolute;
   left: 1rem;
   top: -4rem;
-  background: var(--cyan);
-  color: var(--fond);
+  background: var(--accent);
+  color: #fff;
   padding: 0.5rem 1rem;
   border-radius: 0.4rem;
   z-index: 100;
@@ -90,7 +91,7 @@ a { color: var(--cyan); }
   justify-content: space-between;
   gap: 1rem;
   padding: 0 clamp(1rem, 4vw, 2.5rem);
-  background: rgba(9, 0, 20, 0.82);
+  background: rgba(255, 255, 255, 0.92);
   /* backdrop-filter : https://developer.mozilla.org/fr/docs/Web/CSS/backdrop-filter */
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--ligne);
@@ -103,7 +104,7 @@ a { color: var(--cyan); }
   color: var(--texte);
   text-decoration: none;
   padding: 0.2rem 0.6rem;
-  border: 1px solid var(--violet);
+  border: 1px solid var(--accent);
   border-radius: 0.4rem;
 }
 
@@ -131,48 +132,21 @@ a { color: var(--cyan); }
 .site-header nav a:hover,
 .site-header nav a.actif {   /* .actif est ajouté par script.js */
   color: var(--texte);
-  border-bottom-color: var(--magenta);
+  border-bottom-color: var(--accent);
 }
 
 /* ---------- 4. Accueil (hero) ---------- */
 .hero {
   position: relative;
-  overflow: hidden;
-  min-height: calc(100svh - var(--hauteur-header));
+  min-height: calc(80svh - var(--hauteur-header));
   display: flex;
   align-items: center;
-  padding: 4rem clamp(1rem, 4vw, 2.5rem) 8rem;
-}
-
-/* Élément mémorable : un sol en grille néon en perspective, qui avance lentement.
-   - repeating-linear-gradient : https://developer.mozilla.org/fr/docs/Web/CSS/gradient/repeating-linear-gradient
-   - transform: perspective + rotateX : https://developer.mozilla.org/fr/docs/Web/CSS/transform-function/perspective
-   - mask-image (fondu vers le haut) : https://developer.mozilla.org/fr/docs/Web/CSS/mask-image */
-.hero-grid {
-  position: absolute;
-  left: -50%;
-  right: -50%;
-  bottom: 0;
-  height: 85%;
-  background-image:
-    repeating-linear-gradient(90deg, var(--violet) 0 1px, transparent 1px 64px),
-    repeating-linear-gradient(0deg, var(--violet) 0 1px, transparent 1px 64px);
-  opacity: 0.75;
-  transform: perspective(500px) rotateX(62deg);
-  transform-origin: bottom;
-  -webkit-mask-image: linear-gradient(to top, #000 15%, transparent 95%);
-          mask-image: linear-gradient(to top, #000 15%, transparent 95%);
-  animation: avance 6s linear infinite;
-}
-
-/* @keyframes : https://developer.mozilla.org/fr/docs/Web/CSS/@keyframes
-   La grille se décale d'exactement une case (64px) pour une boucle sans saut. */
-@keyframes avance {
-  to { background-position: 0 64px, 0 64px; }
+  padding: 4rem clamp(1rem, 4vw, 2.5rem) 5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--ligne);
 }
 
 .hero-inner {
-  position: relative;      /* passe au-dessus de la grille */
   width: 100%;
   max-width: var(--largeur);
   margin: 0 auto;
@@ -183,27 +157,23 @@ a { color: var(--cyan); }
   margin-bottom: 1.5rem;
   padding: 0.3rem 0.9rem;
   font-size: 0.95rem;
-  color: var(--cyan);
-  border: 1px solid rgba(34, 211, 238, 0.45);
+  color: var(--accent-fonce);
+  background: #e8efff;
+  border: 1px solid #c6d7ff;
   border-radius: 999px;
 }
 
 .hero h1 {
-  font-size: clamp(2.8rem, 9vw, 6rem);
+  font-size: clamp(2.6rem, 8vw, 5rem);
   font-weight: 700;
   letter-spacing: -0.01em;
-  /* Dégradé dans le texte :
-     https://developer.mozilla.org/fr/docs/Web/CSS/background-clip#text */
-  background: linear-gradient(100deg, var(--texte) 20%, var(--magenta) 70%, var(--violet));
-  -webkit-background-clip: text;
-          background-clip: text;
-  color: transparent;
+  color: var(--texte);
 }
 
 .hero-role {
-  max-width: 34rem;
+  max-width: 36rem;
   margin: 1.25rem 0 2rem;
-  font-size: clamp(1.1rem, 2.4vw, 1.35rem);
+  font-size: clamp(1.1rem, 2.4vw, 1.3rem);
   color: var(--texte-doux);
 }
 
@@ -217,37 +187,37 @@ a { color: var(--cyan); }
 .btn {
   display: inline-block;
   padding: 0.7rem 1.4rem;
-  border: 1px solid var(--violet);
+  border: 1px solid var(--accent);
   border-radius: 0.5rem;
-  color: var(--texte);
+  color: var(--accent-fonce);
   text-decoration: none;
   font-weight: 500;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
 }
-.btn:hover { background: rgba(139, 92, 246, 0.18); border-color: var(--magenta); }
+.btn:hover { background: #e8efff; }
 
-.btn-primary { background: var(--violet); border-color: var(--violet); color: #fff; }
-.btn-primary:hover { background: var(--magenta); border-color: var(--magenta); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-fonce); border-color: var(--accent-fonce); color: #fff; }
 
 /* ---------- 6. Sections ---------- */
 .section {
   max-width: var(--largeur);
   margin: 0 auto;
-  padding: 5rem clamp(1rem, 4vw, 2.5rem) 1rem;
+  padding: 4.5rem clamp(1rem, 4vw, 2.5rem) 1rem;
 }
 
 .section h2 {
-  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-size: clamp(1.7rem, 4vw, 2.3rem);
   margin-bottom: 1.75rem;
   /* Petit trait de couleur sous le titre */
   padding-bottom: 0.6rem;
-  border-bottom: 2px solid var(--violet);
+  border-bottom: 2px solid var(--accent);
   display: inline-block;
 }
 
 /* Longueur de ligne limitée (< 80 caractères) pour la lisibilité :
    https://developer.mozilla.org/fr/docs/Web/CSS/length#ch */
-.prose { max-width: 60ch; }
+.prose { max-width: 60ch; color: var(--texte-doux); }
 
 /* ---------- 7. Compétences ---------- */
 .skills {
@@ -258,7 +228,7 @@ a { color: var(--cyan); }
   grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
   gap: 1.5rem 2.5rem;
 }
-.skills div { border-left: 2px solid var(--violet); padding-left: 1rem; }
+.skills div { border-left: 2px solid var(--accent); padding-left: 1rem; }
 .skills dt { font-family: var(--police-titre); font-weight: 600; font-size: 1.1rem; }
 .skills dd { margin: 0.2rem 0 0; color: var(--texte-doux); }
 
@@ -267,18 +237,14 @@ a { color: var(--cyan); }
 
 .project {
   padding: 1.75rem 0 1.75rem 1.5rem;
-  border-left: 3px solid var(--violet);
+  border-left: 3px solid var(--accent);
   border-bottom: 1px solid var(--ligne);
 }
-/* :nth-child : alterne les couleurs du filet pour rythmer la liste :
-   https://developer.mozilla.org/fr/docs/Web/CSS/:nth-child */
-.project:nth-child(3n + 2) { border-left-color: var(--magenta); }
-.project:nth-child(3n + 3) { border-left-color: var(--cyan); }
 
-.project h3 { font-size: 1.35rem; margin-bottom: 0.6rem; }
+.project h3 { font-size: 1.3rem; margin-bottom: 0.6rem; }
 .project p { max-width: 62ch; color: var(--texte-doux); }
 .project .tags { color: var(--texte); font-size: 0.95rem; margin-bottom: 0.6rem; }
-.project-link { font-weight: 500; }
+.project-link { font-weight: 500; margin-right: 1.25rem; }
 
 /* ---------- 9. Parcours (vraie suite chronologique) ---------- */
 .timeline { list-style: none; margin: 0; padding: 0; }
@@ -291,15 +257,15 @@ a { color: var(--cyan); }
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: var(--magenta);
+  background: var(--accent);
 }
-.timeline .when { margin: 0; color: var(--cyan); font-size: 0.95rem; }
-.timeline h3 { font-size: 1.25rem; margin: 0.2rem 0; }
+.timeline .when { margin: 0; color: var(--accent-fonce); font-size: 0.95rem; }
+.timeline h3 { font-size: 1.2rem; margin: 0.2rem 0; }
 .timeline li p:last-child { margin: 0; color: var(--texte-doux); }
 
 /* ---------- 10. Pied de page ---------- */
 .site-footer {
-  margin-top: 5rem;
+  margin-top: 4rem;
   padding: 2rem 1rem;
   text-align: center;
   color: var(--texte-doux);
@@ -311,6 +277,5 @@ a { color: var(--cyan); }
    https://developer.mozilla.org/fr/docs/Web/CSS/@media/prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .hero-grid { animation: none; }
   .btn { transition: none; }
 }
