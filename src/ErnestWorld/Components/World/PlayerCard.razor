@@ -1,0 +1,33 @@
+@implements IDisposable
+@inject GameState Game
+
+@{
+    var level = Game.Level;
+    var percent = (int)Math.Round(level.Progress(Game.Xp) * 100);
+}
+
+<button type="button" class="player" @onclick="OnOpen" title="Voir mes succès">
+    <span class="player-avatar" aria-hidden="true">
+        @Initial
+        <span class="player-level">Rang @level.Number</span>
+    </span>
+    <span class="player-info">
+        <span class="player-name">@(Game.VisitorName ?? "Voyageur")</span>
+        <span class="player-class">@level.Title · @Game.AchievementCount/@Rules.Achievements.Count succès</span>
+        <span class="xp" role="progressbar" aria-label="Progression vers le rang suivant"
+              aria-valuemin="0" aria-valuemax="100" aria-valuenow="@percent">
+            <span class="xp-fill" style="width: @percent%"></span>
+        </span>
+        <span class="xp-text">@Game.Xp XP@(level.NextXp is int next ? $" · rang suivant à {next}" : " · rang maximum")</span>
+    </span>
+</button>
+
+@code {
+    [Parameter] public EventCallback OnOpen { get; set; }
+
+    private string Initial => Game.VisitorName is { Length: > 0 } name ? name[..1].ToUpperInvariant() : "V";
+
+    protected override void OnInitialized() => Game.Changed += Refresh;
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Game.Changed -= Refresh;
+}

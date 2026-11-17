@@ -1,0 +1,54 @@
+# Construit le site C# (Blazor WebAssembly) et le publie sur GitHub Pages
+# à chaque envoi sur la branche main.
+name: Déployer le site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Tests
+        run: dotnet test ErnestWorld.slnx -c Release
+
+      - name: Générer le Journal (liste des articles, RSS, plan du site)
+        run: dotnet run --project tools/ErnestWorld.Generator -c Release -- src/ErnestWorld/wwwroot https://ernestjesutinafaton-maker.github.io
+
+      - name: Publier le site
+        run: dotnet publish src/ErnestWorld -c Release -o out
+
+      # GitHub Pages ignore les dossiers qui commencent par « _ » (comme _framework) sans ce fichier
+      - name: Désactiver Jekyll
+        run: touch out/wwwroot/.nojekyll
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: out/wwwroot
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

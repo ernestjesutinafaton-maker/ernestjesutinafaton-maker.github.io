@@ -1,0 +1,11 @@
+@* Usage : <Chips Values="Next.js, TypeScript, Supabase" /> *@
+<ul class="chips">
+    @foreach (var value in Values.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+    {
+        <li>@value</li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired] public string Values { get; set; } = "";
+}

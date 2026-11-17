@@ -1,0 +1,174 @@
+@page "/journal/{Slug}"
+@implements IAsyncDisposable
+@inject BlogService Blog
+@inject GameState Game
+@inject BrowserService Browser
+@inject ToastService Toasts
+@inject NavigationManager Nav
+
+<PageTitle>@(_post?.Meta.Title ?? "Article") · Le Journal d'Ernest</PageTitle>
+
+<div class="overlay">
+    <div class="read-progress" aria-hidden="true"><span @ref="_bar"></span></div>
+
+    <div class="overlay-scroll" @ref="_scroller">
+        <div class="overlay-inner article-wrap">
+            <nav class="overlay-bar" aria-label="Navigation de l'article">
+                <a class="back" href="journal"><Icon Name="arrow-left" Size="16" /> Le Journal</a>
+                <a class="back" href="@($"{Nav.BaseUri}?lieu=scriptorium")">Retour à l'île</a>
+            </nav>
+
+            @if (_loading)
+            {
+                <p class="loading">Ouverture du parchemin…</p>
+            }
+            else if (_post is null)
+            {
+                <div class="lost">
+                    <h1>Cet article n'existe pas</h1>
+                    <p>Il a peut-être changé de nom. Les autres sont dans le Journal.</p>
+                    <a class="link-btn primary" href="journal">Ouvrir le Journal</a>
+                </div>
+            }
+            else
+            {
+                var meta = _post.Meta;
+                var read = Game.HasRead(meta.Slug);
+
+                <article class="article">
+                    <header class="article-head">
+                        <p class="overlay-kicker">@string.Join(" · ", meta.Tags)</p>
+                        <h1>@meta.Title</h1>
+                        <p class="article-meta">
+                            <span>@FrenchDate.Format(meta.Date)</span>
+                            <span>@meta.ReadingMinutes min de lecture</span>
+                            @if (read)
+                            {
+                                <span class="tag tag-live"><Icon Name="check" Size="12" /> Lu</span>
+                            }
+                            else
+                            {
+                                <span class="tag tag-gold">+@Rules.XpPerPost XP à la fin</span>
+                            }
+                        </p>
+                    </header>
+
+                    <div class="prose">@((MarkupString)_post.Html)</div>
+
+                    <footer class="article-end">
+                        <div class="end-badge @(read ? "is-done" : null)">
+                            <Icon Name="@(read ? "check" : "page")" Size="20" />
+                            <span>@(read ? $"Article lu · +{Rules.XpPerPost} XP gagnés" : "Encore quelques lignes pour gagner l'XP…")</span>
+                        </div>
+
+                        <section class="journal-newsletter is-inline" aria-labelledby="article-newsletter">
+                            <h2 id="article-newsletter">Tu veux la suite ?</h2>
+                            <NewsletterForm Compact />
+                        </section>
+
+                        <nav class="article-nav" aria-label="Autres articles">
+                            @if (_newer is not null)
+                            {
+                                <a href="journal/@_newer.Slug"><small>Plus récent</small>@_newer.Title</a>
+                            }
+                            @if (_older is not null)
+                            {
+                                <a href="journal/@_older.Slug" class="is-older"><small>Plus ancien</small>@_older.Title</a>
+                            }
+                        </nav>
+                    </footer>
+                </article>
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Slug { get; set; } = "";
+
+    private ElementReference _scroller;
+    private ElementReference _bar;
+    private DotNetObjectReference<Article>? _self;
+    private IJSObjectReference? _watch;
+
+    private Post? _post;
+    private PostMeta? _newer, _older;
+    private bool _loading = true;
+    private string? _loadedSlug;
+    private bool _needsWatch;
+
+    protected override void OnInitialized() => Game.Changed += Refresh;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Slug == _loadedSlug)
+        {
+            return;
+        }
+
+        _loadedSlug = Slug;
+        _loading = true;
+        await StopWatchingAsync();
+
+        _post = await Blog.GetPostAsync(Slug);
+        (_newer, _older) = await Blog.GetNeighboursAsync(Slug);
+        _loading = false;
+        _needsWatch = _post is not null;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_needsWatch)
+        {
+            return;
+        }
+
+        _needsWatch = false;
+        await Browser.ScrollToTopAsync(_scroller);
+        _self ??= DotNetObjectReference.Create(this);
+        _watch = await Browser.WatchReadingAsync(_scroller, _bar, _self);
+    }
+
+    /// <summary>Appelé par le JavaScript quand l'article a été lu jusqu'au bout.</summary>
+    [JSInvokable]
+    public Task OnReadComplete() => InvokeAsync(async () =>
+    {
+        if (_post is null)
+        {
+            return;
+        }
+
+        if (await Game.MarkReadAsync(_post.Meta.Slug))
+        {
+            Toasts.Show("Article lu", $"{_post.Meta.Title} · +{Rules.XpPerPost} XP", "page");
+        }
+    });
+
+    private async Task StopWatchingAsync()
+    {
+        if (_watch is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _watch.InvokeVoidAsync("dispose");
+            await _watch.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+
+        _watch = null;
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+
+    public async ValueTask DisposeAsync()
+    {
+        Game.Changed -= Refresh;
+        await StopWatchingAsync();
+        _self?.Dispose();
+    }
+}

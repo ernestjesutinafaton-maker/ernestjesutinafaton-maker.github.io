@@ -1,0 +1,27 @@
+@implements IDisposable
+@inject GameState Game
+
+<nav class="dock" aria-label="Lieux de l'île">
+    <ul>
+        @foreach (var place in Island.Places)
+        {
+            <li>
+                <button type="button" title="@place.Name" @onclick="() => World.OpenPlaceAsync(place.Id)"
+                        class="dock-btn @(place.Id == ActiveId ? "is-active" : null) @(Game.HasVisited(place.Id) ? null : "is-new")"
+                        aria-current="@(place.Id == ActiveId ? "true" : null)">
+                    <span class="dock-icon"><Icon Name="@place.Id" Size="22" /></span>
+                    <span class="dock-name">@place.Short</span>
+                </button>
+            </li>
+        }
+    </ul>
+</nav>
+
+@code {
+    [CascadingParameter] public WorldView World { get; set; } = default!;
+    [Parameter] public string? ActiveId { get; set; }
+
+    protected override void OnInitialized() => Game.Changed += Refresh;
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Game.Changed -= Refresh;
+}
