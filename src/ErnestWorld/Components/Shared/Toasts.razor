@@ -1,0 +1,40 @@
+@implements IDisposable
+@inject ToastService Service
+
+<div class="toasts" aria-live="polite" role="status">
+    @foreach (var toast in _toasts)
+    {
+        <div class="toast" @key="toast.Id">
+            <span class="toast-icon"><Icon Name="@toast.Icon" Size="16" /></span>
+            <div>
+                <p class="toast-title">@toast.Title</p>
+                <p class="toast-text">@toast.Text</p>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private readonly List<Toast> _toasts = [];
+
+    protected override void OnInitialized() => Service.Shown += OnShown;
+
+    private void OnShown(Toast toast)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            _toasts.Add(toast);
+            if (_toasts.Count > 4)
+            {
+                _toasts.RemoveAt(0);
+            }
+
+            StateHasChanged();
+            await Task.Delay(3600);
+            _toasts.Remove(toast);
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => Service.Shown -= OnShown;
+}

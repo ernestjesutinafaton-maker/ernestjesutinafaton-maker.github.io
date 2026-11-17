@@ -1,0 +1,10 @@
+@* Bouton qui emmène vers un autre lieu de l'île. *@
+<button type="button" class="link-btn" @onclick="() => World.OpenPlaceAsync(To)">
+    @ChildContent <span aria-hidden="true">→</span>
+</button>
+
+@code {
+    [CascadingParameter] public WorldView World { get; set; } = default!;
+    [Parameter, EditorRequired] public string To { get; set; } = "";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

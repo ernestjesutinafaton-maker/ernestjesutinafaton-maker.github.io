@@ -1,0 +1,40 @@
+@implements IDisposable
+@inject GameState Game
+
+@if (Campaign.IsComplete(Game))
+{
+    <div class="final">
+        <strong>Quête finale.</strong> Tu as vaincu les cinq gardiens et sauvé l'île. Il ne reste qu'une chose à faire…
+    </div>
+}
+else
+{
+    <p class="small-print">
+        Quête finale : @Game.DefeatedCount / @Campaign.Levels.Count boss vaincus.
+        Mais pas besoin d'attendre la fin de l'aventure pour m'écrire !
+    </p>
+}
+
+<p class="lead">
+    Je recherche un <strong>stage de 4 à 5 semaines</strong> en développement ou en systèmes et réseaux.
+    Le phare est allumé : envoie-moi un signal.
+</p>
+
+<div class="links">
+    <a class="link-btn primary" href="mailto:ernestjesutinafaton@gmail.com" @onclick="ContactAsync">Envoyer un email</a>
+    <ExtLink Href="https://linkedin.com/in/ernest-afaton-1280a4361/" Flag="@Flags.Contact">LinkedIn</ExtLink>
+    <ExtLink Href="https://github.com/ernestjesutinafaton-maker">GitHub</ExtLink>
+</div>
+
+<CopyButton Text="ernestjesutinafaton@gmail.com" />
+
+<p class="small-print">
+    Tu préfères tout lire d'un coup ? <a href="classique/" target="_top">Version classique du portfolio</a>.
+</p>
+
+@code {
+    protected override void OnInitialized() => Game.Changed += Refresh;
+    private Task ContactAsync() => Game.SetFlagAsync(Flags.Contact);
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Game.Changed -= Refresh;
+}

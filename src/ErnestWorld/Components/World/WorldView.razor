@@ -1,0 +1,565 @@
+@implements IAsyncDisposable
+@inject GameState Game
+@inject WorldService World
+@inject ToastService Toasts
+@inject NavigationManager Nav
+@inject BlogService Blog
+
+<canvas id="scene" @ref="_canvas" class="scene @(_overlay ? "is-muted" : null)"
+        aria-label="Île en 3D du portfolio d'Ernest Afaton. La barre des lieux, en bas de l'écran, permet de naviguer au clavier."></canvas>
+<div @ref="_labels" class="labels @(_overlay || !_entered || _battleBossId is not null ? "is-off" : null)" aria-hidden="true"></div>
+
+@if (!_overlay && !_entered)
+{
+    <IntroScreen Ready="_ready" Failed="_failed" Returning="Game.Visited.Count > 0" Name="@Game.VisitorName" OnEnter="EnterAsync" />
+}
+else if (!_overlay)
+{
+    <CascadingValue Value="this" IsFixed="true">
+        @if (_battleBossId is { } bossId)
+        {
+            <BattleView @key="_battleKey" BossId="@bossId" OnExit="EndBattleAsync" />
+        }
+        else
+        {
+            <div class="hud">
+                <PlayerCard OnOpen="() => _dialog = Dialog.Achievements" />
+                <ResourceBar />
+                <QuestLog ActiveId="@_active?.Id" />
+                <canvas class="minimap" @ref="_minimap" width="200" height="200"
+                        aria-label="Mini-carte de l'île : clique pour t'y déplacer"></canvas>
+
+                <div class="tools" role="toolbar" aria-label="Outils">
+                    <button type="button" class="tool" @onclick="() => _dialog = Dialog.Levels" title="Carte des niveaux" aria-label="Ouvrir la carte des niveaux">
+                        <Icon Name="flag" />
+                    </button>
+                    <button type="button" class="tool" @onclick="ToggleNightAsync" title="Jour / nuit"
+                            aria-label="@(_night ? "Passer en mode jour" : "Passer en mode nuit")">
+                        <Icon Name="@(_night ? "sun" : "moon")" />
+                    </button>
+                    <button type="button" class="tool @(_touring ? "is-on" : null)" @onclick="ToggleTourAsync" title="Visite guidée"
+                            aria-label="@(_touring ? "Arrêter la visite guidée" : "Lancer la visite guidée")" aria-pressed="@(_touring ? "true" : "false")">
+                        <Icon Name="@(_touring ? "stop" : "play")" />
+                    </button>
+                    <button type="button" class="tool" @onclick="HomeAsync" title="Vue d'ensemble" aria-label="Revenir à la vue d'ensemble">
+                        <Icon Name="home" />
+                    </button>
+                    <button type="button" class="tool" @onclick="() => _dialog = Dialog.Achievements" title="Succès" aria-label="Voir mes succès">
+                        <Icon Name="trophy" />
+                    </button>
+                    <button type="button" class="tool" @onclick="ToggleSoundAsync" title="Son"
+                            aria-label="@(_soundOn ? "Couper le son" : "Activer le son")" aria-pressed="@(_soundOn ? "true" : "false")">
+                        <Icon Name="@(_soundOn ? "volume" : "mute")" />
+                    </button>
+                    <a class="tool" href="journal" title="Le Journal (blog)" aria-label="Ouvrir le Journal">
+                        <Icon Name="book" />
+                    </a>
+                    <a class="tool" href="classique/" target="_top" title="Version classique" aria-label="Version classique du portfolio">
+                        <Icon Name="page" />
+                    </a>
+                </div>
+
+                <Dock ActiveId="@_active?.Id" />
+
+                @if (_touring)
+                {
+                    <div class="tour-bar" role="status">
+                        <Icon Name="play" Size="14" />
+                        Visite guidée · @(_tourIndex + 1) / @Island.Places.Count
+                        <button type="button" @onclick="StopTourAndRender">Arrêter</button>
+                    </div>
+                }
+            </div>
+
+            @if (_active is not null)
+            {
+                <PlacePanel @key="_active.Id" Place="_active" OnClose="CloseAsync" OnStep="StepAsync" />
+            }
+
+            @switch (_dialog)
+            {
+                case Dialog.Achievements:
+                    <AchievementsDialog OnClose="CloseDialog" />
+                    break;
+                case Dialog.Levels:
+                    <LevelsDialog OnClose="CloseDialog" OnFight="StartBattleAsync" OnGoto="GotoFromDialogAsync" />
+                    break;
+            }
+        }
+    </CascadingValue>
+}
+
+@code {
+    private enum Dialog { None, Achievements, Levels }
+
+    private ElementReference _canvas;
+    private ElementReference _labels;
+    private ElementReference _minimap;
+    private DotNetObjectReference<WorldView>? _self;
+
+    private Place? _active;
+    private Dialog _dialog;
+    private string? _battleBossId;
+    private Guid _battleKey;
+    private bool _ready, _failed, _entered, _worldEntered, _overlay, _night, _touring, _soundOn, _minimapAttached;
+    private int _tourIndex;
+    private CancellationTokenSource? _tourCts;
+    private Dictionary<string, string> _bossStates = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _overlay = IsOverlay(Nav.Uri);
+        // Arrivée directe sur le Journal ou un article : pas d'écran d'accueil au retour sur l'île.
+        _entered = _overlay;
+        Nav.LocationChanged += OnLocationChanged;
+        Game.Changed += OnGameChanged;
+        Toasts.Shown += OnToast;
+        await Game.LoadAsync();
+        _ = Blog.GetPostsAsync(); // préchargement du Journal
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _self = DotNetObjectReference.Create(this);
+            try
+            {
+                await Game.LoadAsync();
+                var bosses = Campaign.ForWorld(Game).ToList();
+                _bossStates = bosses.ToDictionary(b => b.Id, b => b.State);
+                await World.InitAsync(_canvas, _labels, _self, Island.ForWorld(), Game.Visited, bosses);
+                _soundOn = await World.IsSoundOnAsync();
+                _ready = true;
+                if (_overlay)
+                {
+                    await World.SetPausedAsync(true);
+                }
+                else if (FromQuery(Nav.Uri, "lieu") is { } id && Island.Find(id) is not null
+                         || FromQuery(Nav.Uri, "combat") is { } boss && Bestiary.Find(boss) is not null)
+                {
+                    // Lien partagé vers un lieu (/?lieu=forge) ou un boss (/?combat=golem) : pas d'écran d'accueil.
+                    await EnterAsync(null);
+                }
+            }
+            catch (JSException)
+            {
+                _failed = true; // pas de WebGL : l'écran d'accueil propose le Journal et la version classique
+            }
+
+            StateHasChanged();
+            return;
+        }
+
+        // La mini-carte apparaît avec l'interface : on la branche au moteur 3D une seule fois.
+        if (_ready && _entered && !_overlay && _battleBossId is null && !_minimapAttached && _minimap.Context is not null)
+        {
+            _minimapAttached = true;
+            await World.AttachMinimapAsync(_minimap);
+        }
+    }
+
+    // ---------------------------------------------------------------- navigation
+
+    private static bool IsOverlay(string uri) => new Uri(uri).AbsolutePath.Trim('/').Length > 0;
+
+    private static string? FromQuery(string uri, string key)
+    {
+        foreach (var pair in new Uri(uri).Query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && parts[0] == key)
+            {
+                return Uri.UnescapeDataString(parts[1]);
+            }
+        }
+
+        return null;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(async () =>
+    {
+        var overlay = IsOverlay(e.Location);
+        if (overlay != _overlay)
+        {
+            _overlay = overlay;
+            if (overlay)
+            {
+                StopTour();
+                _entered = true;
+                _minimapAttached = false;
+            }
+
+            await World.SetPausedAsync(overlay);
+            if (!overlay)
+            {
+                await EnterWorldAsync();
+            }
+        }
+
+        if (!overlay && _entered)
+        {
+            await OpenFromQueryAsync(e.Location);
+        }
+
+        StateHasChanged();
+    });
+
+    private async Task OpenFromQueryAsync(string uri)
+    {
+        if (FromQuery(uri, "combat") is { } bossId && Bestiary.Find(bossId) is not null)
+        {
+            await StartBattleAsync(bossId);
+        }
+        else if (FromQuery(uri, "lieu") is { } id && Island.Find(id) is not null)
+        {
+            await OpenPlaceAsync(id);
+        }
+    }
+
+    // ---------------------------------------------------------------- entrée dans le monde
+
+    private async Task EnterAsync(string? name)
+    {
+        if (!string.IsNullOrWhiteSpace(name))
+        {
+            await Game.SetNameAsync(name);
+        }
+
+        _entered = true;
+        await EnterWorldAsync();
+        var who = Game.VisitorName is { } n ? $", {n}" : string.Empty;
+        Toasts.Show($"Bienvenue sur l'île{who}",
+            Game.Visited.Count > 0 ? "Content de te revoir !" : "Niveau 1 : découvre le Château, la Forge et l'Académie", "chateau");
+        await OpenFromQueryAsync(Nav.Uri);
+    }
+
+    private async Task EnterWorldAsync()
+    {
+        if (_worldEntered || !_ready)
+        {
+            return;
+        }
+
+        _worldEntered = true;
+        await World.EnterAsync();
+    }
+
+    // ---------------------------------------------------------------- lieux
+
+    /// <summary>Ouvre le panneau d'un lieu et y emmène la caméra.</summary>
+    public async Task OpenPlaceAsync(string id) => await OpenPlaceAsync(id, fromUser: true);
+
+    private async Task OpenPlaceAsync(string id, bool fromUser)
+    {
+        if (fromUser)
+        {
+            StopTour();
+        }
+
+        var place = Island.Find(id);
+        if (place is null || !_ready || _battleBossId is not null)
+        {
+            return;
+        }
+
+        if (!_entered)
+        {
+            _entered = true;
+            await EnterWorldAsync();
+        }
+
+        var isNew = !Game.HasVisited(id);
+        _active = place;
+        _dialog = Dialog.None;
+
+        if (isNew)
+        {
+            Toasts.Show("Lieu découvert", $"{place.Name} · +{Rules.XpPerPlace} XP", place.Id);
+        }
+
+        await Game.VisitAsync(id);
+        await World.FocusAsync(id);
+        await World.SetVisitedAsync(Game.Visited);
+        StateHasChanged();
+    }
+
+    private async Task CloseAsync()
+    {
+        StopTour();
+        _active = null;
+        await World.ClearFocusAsync();
+    }
+
+    private Task StepAsync(int direction) => OpenPlaceAsync(Island.Step(_active?.Id, direction).Id);
+
+    private async Task HomeAsync()
+    {
+        StopTour();
+        _active = null;
+        await World.HomeAsync();
+    }
+
+    private void CloseDialog() => _dialog = Dialog.None;
+
+    /// <summary>Ouvre la carte des niveaux.</summary>
+    public void OpenLevels()
+    {
+        _dialog = Dialog.Levels;
+        StateHasChanged();
+    }
+
+    private async Task GotoFromDialogAsync(string placeId)
+    {
+        _dialog = Dialog.None;
+        await OpenPlaceAsync(placeId);
+    }
+
+    // ---------------------------------------------------------------- combats
+
+    /// <summary>Lance le combat contre un boss, s'il est réveillé (ou déjà vaincu : revanche).</summary>
+    public async Task StartBattleAsync(string bossId)
+    {
+        if (!_ready || Bestiary.Find(bossId) is not { } boss)
+        {
+            return;
+        }
+
+        if (!Campaign.CanFight(bossId, Game))
+        {
+            var level = Campaign.ForBoss(bossId)!;
+            Toasts.Show($"{boss.Name} dort encore", Campaign.StateOf(level, Game) == LevelState.Locked
+                ? $"Termine d'abord les niveaux précédents"
+                : $"Termine les objectifs du niveau {level.Number} pour le réveiller", "lock");
+            _dialog = Dialog.Levels;
+            StateHasChanged();
+            return;
+        }
+
+        if (!_entered)
+        {
+            _entered = true;
+            await EnterWorldAsync();
+        }
+
+        StopTour();
+        _active = null;
+        _dialog = Dialog.None;
+        _minimapAttached = false;
+        _battleKey = Guid.NewGuid();
+        _battleBossId = bossId;
+        StateHasChanged();
+    }
+
+    private async Task EndBattleAsync()
+    {
+        _battleBossId = null;
+        await RefreshBossesAsync(announce: true);
+        StateHasChanged();
+    }
+
+    /// <summary>Met à jour les boss sur l'île et annonce ceux qui se réveillent.</summary>
+    private async Task RefreshBossesAsync(bool announce)
+    {
+        var bosses = Campaign.ForWorld(Game).ToList();
+        var changed = false;
+        foreach (var boss in bosses)
+        {
+            _bossStates.TryGetValue(boss.Id, out var before);
+            if (before == boss.State)
+            {
+                continue;
+            }
+
+            changed = true;
+            if (announce && boss.State == "available" && _battleBossId is null)
+            {
+                Toasts.Show($"{boss.Label} s'est réveillé !", "Affronte-le depuis le panneau du niveau ou clique sur lui", Campaign.IconOf(boss.Id));
+                await World.PlayAsync("roar");
+            }
+        }
+
+        if (announce && changed && Campaign.IsComplete(Game) && _bossStates.Values.Any(s => s != "defeated"))
+        {
+            Toasts.Show("Quête finale débloquée", "L'île est sauvée : rends-toi au Phare pour recruter Ernest", "phare");
+        }
+
+        _bossStates = bosses.ToDictionary(b => b.Id, b => b.State);
+        if (changed)
+        {
+            await World.SetBossesAsync(bosses);
+        }
+    }
+
+    // ---------------------------------------------------------------- jour / nuit, son
+
+    private async Task ToggleNightAsync()
+    {
+        _night = !_night;
+        await World.SetNightAsync(_night);
+        Toasts.Show(_night ? "La nuit tombe" : "Le jour se lève",
+            _night ? "Les lumières de l'île s'allument" : "Bonne exploration", _night ? "moon" : "sun");
+        if (_night)
+        {
+            await Game.SetFlagAsync(Flags.Night);
+        }
+    }
+
+    private async Task ToggleSoundAsync() => _soundOn = await World.ToggleSoundAsync();
+
+    /// <summary>Chaque notification a son petit son.</summary>
+    private void OnToast(Toast toast)
+    {
+        var sound = toast.Title switch
+        {
+            "Lieu découvert" => "discover",
+            "Succès débloqué" => "achievement",
+            "Nouveau rang" => "levelup",
+            _ => null,
+        };
+
+        if (sound is not null)
+        {
+            _ = InvokeAsync(() => World.PlayAsync(sound).AsTask());
+        }
+    }
+
+    // ---------------------------------------------------------------- visite guidée
+
+    private Task ToggleTourAsync()
+    {
+        if (_touring)
+        {
+            StopTour();
+            return Task.CompletedTask;
+        }
+
+        return StartTourAsync();
+    }
+
+    private async Task StartTourAsync()
+    {
+        StopTour();
+        var cts = new CancellationTokenSource();
+        _tourCts = cts;
+        _touring = true;
+        Toasts.Show("Visite guidée", "Clique sur l'île pour reprendre la main", "play");
+
+        try
+        {
+            for (var i = 0; i < Island.Places.Count; i++)
+            {
+                _tourIndex = i;
+                await OpenPlaceAsync(Island.Places[i].Id, fromUser: false);
+                await Task.Delay(TimeSpan.FromSeconds(6.5), cts.Token);
+            }
+
+            _touring = false;
+            _active = null;
+            await World.HomeAsync();
+            if (await Game.SetFlagAsync(Flags.Tour))
+            {
+                Toasts.Show("Visite terminée", $"Tu connais toute l'île · +{Rules.XpTour} XP", "map");
+            }
+        }
+        catch (TaskCanceledException)
+        {
+            // Visite interrompue par le visiteur.
+        }
+        finally
+        {
+            if (ReferenceEquals(_tourCts, cts))
+            {
+                _tourCts = null;
+                _touring = false;
+            }
+
+            cts.Dispose();
+            StateHasChanged();
+        }
+    }
+
+    private void StopTour()
+    {
+        if (_tourCts is { } cts)
+        {
+            _tourCts = null;
+            cts.Cancel();
+        }
+
+        _touring = false;
+    }
+
+    private void StopTourAndRender()
+    {
+        StopTour();
+        StateHasChanged();
+    }
+
+    // ---------------------------------------------------------------- appels venant du moteur 3D
+
+    [JSInvokable]
+    public Task OnPlaceClicked(string id) => InvokeAsync(() => OpenPlaceAsync(id));
+
+    [JSInvokable]
+    public Task OnBossClicked(string id) => InvokeAsync(() => _battleBossId is null ? StartBattleAsync(id) : Task.CompletedTask);
+
+    [JSInvokable]
+    public Task OnKey(string key) => InvokeAsync(async () =>
+    {
+        if (_battleBossId is not null)
+        {
+            return; // le combat gère son propre clavier
+        }
+
+        switch (key)
+        {
+            case "Escape" when _dialog != Dialog.None:
+                _dialog = Dialog.None;
+                break;
+            case "Escape" when _active is not null:
+                await CloseAsync();
+                break;
+            case "ArrowRight" when _dialog == Dialog.None:
+                await StepAsync(1);
+                break;
+            case "ArrowLeft" when _dialog == Dialog.None:
+                await StepAsync(-1);
+                break;
+            case "Home":
+                await HomeAsync();
+                break;
+        }
+
+        StateHasChanged();
+    });
+
+    [JSInvokable]
+    public Task OnUserInterrupt() => InvokeAsync(() =>
+    {
+        if (_touring)
+        {
+            StopTourAndRender();
+        }
+    });
+
+    private void OnGameChanged() => _ = InvokeAsync(async () =>
+    {
+        if (_ready && _battleBossId is null)
+        {
+            await RefreshBossesAsync(announce: _entered);
+        }
+
+        StateHasChanged();
+    });
+
+    public async ValueTask DisposeAsync()
+    {
+        StopTour();
+        Nav.LocationChanged -= OnLocationChanged;
+        Game.Changed -= OnGameChanged;
+        Toasts.Shown -= OnToast;
+        await World.DisposeAsync();
+        _self?.Dispose();
+    }
+}

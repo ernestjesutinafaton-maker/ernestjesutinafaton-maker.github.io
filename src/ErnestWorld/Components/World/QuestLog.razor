@@ -1,0 +1,107 @@
+@implements IDisposable
+@inject GameState Game
+@inject BrowserService Browser
+
+@{
+    var level = Campaign.Current(Game);
+    var state = level is null ? LevelState.Completed : Campaign.StateOf(level, Game);
+    var done = level?.Objectives.Count(o => o.IsDone(Game)) ?? 0;
+}
+
+<aside class="quests @(_collapsed ? "is-collapsed" : null)" aria-label="Niveau en cours">
+    <button type="button" class="quests-toggle" @onclick="() => _collapsed = !_collapsed" aria-expanded="@(_collapsed ? "false" : "true")">
+        <span>@(level is null ? "Campagne terminée" : $"Niveau {level.Number} · {level.Name}")</span>
+        <span class="quests-count">@(level is null ? $"{Campaign.Levels.Count}/{Campaign.Levels.Count}" : $"{done}/{level.Objectives.Count}")</span>
+    </button>
+
+    @if (!_collapsed)
+    {
+        <div class="quests-body">
+            @if (level is null)
+            {
+                <p class="quests-story">Les cinq gardiens sont tombés. Il ne reste qu'une quête…</p>
+                <ol class="quests-list">
+                    <li>
+                        <button type="button" class="quest is-final @(Game.HasVisited("phare") ? "is-done" : null)" @onclick="() => World.OpenPlaceAsync(Ph)">
+                            <span class="quest-check">@if (Game.HasVisited(Ph)) { <Icon Name="check" Size="12" /> }</span>
+                            <span class="quest-text">Recruter Ernest au Phare</span>
+                        </button>
+                    </li>
+                </ol>
+            }
+            else
+            {
+                <p class="quests-story">@level.Story</p>
+                <ol class="quests-list">
+                    @foreach (var objective in level.Objectives)
+                    {
+                        var isDone = objective.IsDone(Game);
+                        <li>
+                            @if (objective.Href is { } href)
+                            {
+                                <a class="quest @(isDone ? "is-done" : null)" href="@href">
+                                    <span class="quest-check">@if (isDone) { <Icon Name="check" Size="12" /> }</span>
+                                    <span class="quest-text">@objective.Label</span>
+                                </a>
+                            }
+                            else
+                            {
+                                <button type="button" class="quest @(isDone ? "is-done" : null) @(objective.PlaceId == ActiveId ? "is-active" : null)"
+                                        @onclick="() => World.OpenPlaceAsync(objective.PlaceId!)">
+                                    <span class="quest-check">@if (isDone) { <Icon Name="check" Size="12" /> }</span>
+                                    <span class="quest-text">@objective.Label</span>
+                                </button>
+                            }
+                        </li>
+                    }
+                </ol>
+
+                <div class="boss-row @(state == LevelState.BossReady ? "is-ready" : null)">
+                    <span class="boss-row-icon"><Icon Name="@Campaign.IconOf(level.BossId)" Size="18" /></span>
+                    <div>
+                        <p class="boss-row-label">Boss du niveau</p>
+                        <p class="boss-row-name">@level.Boss.Name</p>
+                    </div>
+                    @if (state == LevelState.BossReady)
+                    {
+                        <button type="button" class="btn-boss" @onclick="() => World.StartBattleAsync(level.BossId)">
+                            <Icon Name="sword" Size="15" /> Affronter
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="boss-row-lock"><Icon Name="lock" Size="12" /> Endormi</span>
+                    }
+                </div>
+            }
+
+            <button type="button" class="quests-map" @onclick="World.OpenLevels">
+                <Icon Name="map" Size="15" /> Carte des niveaux
+            </button>
+        </div>
+    }
+</aside>
+
+@code {
+    private const string Ph = "phare";
+
+    [CascadingParameter] public WorldView World { get; set; } = default!;
+    [Parameter] public string? ActiveId { get; set; }
+
+    private bool _collapsed;
+
+    protected override void OnInitialized() => Game.Changed += Refresh;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // Sur téléphone, le niveau en cours démarre replié pour laisser voir l'île.
+        if (firstRender && await Browser.IsSmallScreenAsync())
+        {
+            _collapsed = true;
+            StateHasChanged();
+        }
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Game.Changed -= Refresh;
+}
