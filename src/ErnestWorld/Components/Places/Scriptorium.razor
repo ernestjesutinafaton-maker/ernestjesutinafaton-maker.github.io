@@ -1,0 +1,45 @@
+@implements IDisposable
+@inject BlogService Blog
+@inject GameState Game
+
+<p class="lead">
+    Le Scriptorium abrite mon <strong>Journal</strong> : ce que je construis, ce que j'apprends, ce que j'aime.
+    Chaque article lu jusqu'au bout rapporte <strong>+@Rules.XpPerPost XP</strong>.
+</p>
+
+@if (_posts is null)
+{
+    <p class="small-print">Ouverture des parchemins…</p>
+}
+else if (_posts.Count == 0)
+{
+    <p>Les premiers articles arrivent bientôt.</p>
+}
+else
+{
+    <p class="small-print">@_posts.Count(p => Game.HasRead(p.Slug)) / @_posts.Count articles lus</p>
+    <div class="post-list">
+        @foreach (var post in _posts.Take(3))
+        {
+            <ArticleCard Post="post" />
+        }
+    </div>
+}
+
+<div class="links">
+    <a class="link-btn primary" href="journal"><Icon Name="book" Size="16" /> Ouvrir le Journal</a>
+    <a class="link-btn" href="rss.xml" target="_blank" rel="noopener"><Icon Name="rss" Size="16" /> Flux RSS</a>
+</div>
+
+@code {
+    private IReadOnlyList<PostMeta>? _posts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Game.Changed += Refresh;
+        _posts = await Blog.GetPostsAsync();
+    }
+
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Game.Changed -= Refresh;
+}

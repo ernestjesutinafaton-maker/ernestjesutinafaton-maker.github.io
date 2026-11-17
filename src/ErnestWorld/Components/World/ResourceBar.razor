@@ -1,0 +1,16 @@
+@inject BlogService Blog
+
+@* Les « ressources » de l'île : quelques chiffres sur Ernest, façon jeu de stratégie. *@
+<ul class="resources" aria-label="L'île d'Ernest en chiffres">
+    <li title="Projets réalisés"><span class="res-icon"><Icon Name="spark" Size="16" /></span><strong>16</strong><span class="res-label">Projets</span></li>
+    <li title="Technologies utilisées"><span class="res-icon"><Icon Name="forge" Size="16" /></span><strong>40+</strong><span class="res-label">Technos</span></li>
+    <li title="Articles du Journal"><span class="res-icon"><Icon Name="scriptorium" Size="16" /></span><strong>@_posts</strong><span class="res-label">Articles</span></li>
+    <li title="Trophées"><span class="res-icon"><Icon Name="trophy" Size="16" /></span><strong>1</strong><span class="res-label">Trophée</span></li>
+    <li class="res-status" title="Ernest recherche un stage"><span class="status-dot"></span><strong>Dispo</strong><span class="res-label">Stage</span></li>
+</ul>
+
+@code {
+    private int _posts;
+
+    protected override async Task OnInitializedAsync() => _posts = (await Blog.GetPostsAsync()).Count;
+}

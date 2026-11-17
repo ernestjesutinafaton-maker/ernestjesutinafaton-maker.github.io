@@ -1,0 +1,19 @@
+@inject BrowserService Browser
+
+<button type="button" class="copy" @onclick="CopyAsync">
+    <span>@Text</span>
+    <span aria-live="polite">@_label</span>
+</button>
+
+@code {
+    [Parameter, EditorRequired] public string Text { get; set; } = "";
+    private string _label = "Copier";
+
+    private async Task CopyAsync()
+    {
+        _label = await Browser.CopyAsync(Text) ? "Copié !" : "Copie impossible";
+        StateHasChanged();
+        await Task.Delay(2000);
+        _label = "Copier";
+    }
+}

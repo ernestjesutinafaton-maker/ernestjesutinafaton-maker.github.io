@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Le Journal d'Ernest</title>
+    <link>https://ernestjesutinafaton-maker.github.io/journal</link>
+    <description>Le blog d'Ernest Afaton : projets, apprentissages et passions d'un étudiant développeur.</description>
+    <language>fr-FR</language>
+    <item>
+      <title>Bienvenue sur mon île</title>
+      <link>https://ernestjesutinafaton-maker.github.io/journal/bienvenue-sur-mon-ile</link>
+      <guid>https://ernestjesutinafaton-maker.github.io/journal/bienvenue-sur-mon-ile</guid>
+      <pubDate>Tue, 17 Nov 2026 09:00:00 GMT</pubDate>
+      <description>Pourquoi mon portfolio est devenu une île en 3D à explorer, et comment elle est construite.</description>
+      <category>portfolio</category>
+      <category>csharp</category>
+      <category>3d</category>
+    </item>
+    <item>
+      <title>Boutik : une caisse qui marche sans internet</title>
+      <link>https://ernestjesutinafaton-maker.github.io/journal/boutik-une-caisse-sans-internet</link>
+      <guid>https://ernestjesutinafaton-maker.github.io/journal/boutik-une-caisse-sans-internet</guid>
+      <pubDate>Thu, 12 Nov 2026 09:00:00 GMT</pubDate>
+      <description>Comment construire une application de caisse qui continue de fonctionner quand le réseau tombe, puis se resynchronise toute seule.</description>
+      <category>projet</category>
+      <category>mobile</category>
+      <category>hors-ligne</category>
+    </item>
+    <item>
+      <title>Un PC d'école devenu serveur NAS</title>
+      <link>https://ernestjesutinafaton-maker.github.io/journal/un-pc-d-ecole-devenu-nas</link>
+      <guid>https://ernestjesutinafaton-maker.github.io/journal/un-pc-d-ecole-devenu-nas</guid>
+      <pubDate>Thu, 05 Nov 2026 09:00:00 GMT</pubDate>
+      <description>Stockage, cloud privé et accès à distance sécurisé sur un simple ordinateur, avec OpenMediaVault, Docker, Nextcloud et Tailscale.</description>
+      <category>infrastructure</category>
+      <category>docker</category>
+      <category>réseau</category>
+    </item>
+  </channel>
+</rss>

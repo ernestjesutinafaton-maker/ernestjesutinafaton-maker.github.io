@@ -1,0 +1,41 @@
+[
+  {
+    "slug": "bienvenue-sur-mon-ile",
+    "title": "Bienvenue sur mon \u00EEle",
+    "date": "2026-11-17",
+    "summary": "Pourquoi mon portfolio est devenu une \u00EEle en 3D \u00E0 explorer, et comment elle est construite.",
+    "tags": [
+      "portfolio",
+      "csharp",
+      "3d"
+    ],
+    "readingMinutes": 2,
+    "draft": false
+  },
+  {
+    "slug": "boutik-une-caisse-sans-internet",
+    "title": "Boutik : une caisse qui marche sans internet",
+    "date": "2026-11-12",
+    "summary": "Comment construire une application de caisse qui continue de fonctionner quand le r\u00E9seau tombe, puis se resynchronise toute seule.",
+    "tags": [
+      "projet",
+      "mobile",
+      "hors-ligne"
+    ],
+    "readingMinutes": 2,
+    "draft": false
+  },
+  {
+    "slug": "un-pc-d-ecole-devenu-nas",
+    "title": "Un PC d\u0027\u00E9cole devenu serveur NAS",
+    "date": "2026-11-05",
+    "summary": "Stockage, cloud priv\u00E9 et acc\u00E8s \u00E0 distance s\u00E9curis\u00E9 sur un simple ordinateur, avec OpenMediaVault, Docker, Nextcloud et Tailscale.",
+    "tags": [
+      "infrastructure",
+      "docker",
+      "r\u00E9seau"
+    ],
+    "readingMinutes": 2,
+    "draft": false
+  }
+]

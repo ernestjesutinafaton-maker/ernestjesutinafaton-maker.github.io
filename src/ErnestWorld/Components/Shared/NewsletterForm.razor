@@ -1,0 +1,103 @@
+@inject NewsletterService Newsletter
+@inject GameState Game
+@inject BrowserService Browser
+@inject WorldService World
+@inject ToastService Toasts
+
+<div class="newsletter @(Compact ? "is-compact" : null)">
+    @if (_sent)
+    {
+        <div class="newsletter-done" role="status">
+            <span class="newsletter-bird"><Icon Name="pigeonnier" Size="22" /></span>
+            <div>
+                <p><strong>Pigeon envoyé !</strong></p>
+                @if (Newsletter.Mode == NewsletterMode.Buttondown)
+                {
+                    <p>Vérifie ta boîte mail : un message t'attend pour confirmer ton inscription.</p>
+                }
+                else
+                {
+                    <p>Ta messagerie s'est ouverte avec un message prêt : envoie-le pour confirmer ton inscription.</p>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (!Compact)
+        {
+            <p class="newsletter-pitch">
+                Un email quand un nouvel article paraît sur l'île : projets, apprentissages, coulisses.
+                Pas de spam, et tu peux te désinscrire à tout moment.
+            </p>
+        }
+
+        <form @ref="_form" class="newsletter-form" method="post" novalidate
+              action="@(Newsletter.Mode == NewsletterMode.Buttondown ? Newsletter.ButtondownAction : null)"
+              target="newsletter-frame" @onsubmit="SubmitAsync">
+            <label for="@_inputId" class="sr-only">Ton adresse email</label>
+            <input id="@_inputId" type="email" name="email" placeholder="ton@email.com" autocomplete="email"
+                   @bind="_email" @bind:event="oninput" aria-invalid="@(_error is not null ? "true" : "false")" />
+            <input type="hidden" name="embed" value="1" />
+            <button type="submit" class="link-btn primary">
+                <Icon Name="pigeonnier" Size="16" /> S'abonner
+            </button>
+        </form>
+
+        @if (_error is not null)
+        {
+            <p class="form-error" role="alert">@_error</p>
+        }
+
+        <p class="newsletter-note">
+            +@Rules.XpSubscribe XP et le succès « Messager »
+            @if (Newsletter.Mode == NewsletterMode.Mailto)
+            {
+                <span> · l'inscription se fait par un email pré-rempli</span>
+            }
+        </p>
+    }
+
+    @if (Newsletter.Mode == NewsletterMode.Buttondown)
+    {
+        <iframe name="newsletter-frame" class="sr-only" title="Envoi de l'inscription" tabindex="-1"></iframe>
+    }
+</div>
+
+@code {
+    [Parameter] public bool Compact { get; set; }
+
+    private readonly string _inputId = $"newsletter-{Guid.NewGuid():N}";
+    private ElementReference _form;
+    private string? _email;
+    private string? _error;
+    private bool _sent;
+
+    private async Task SubmitAsync()
+    {
+        if (!NewsletterService.IsValidEmail(_email))
+        {
+            _error = "Cette adresse email ne semble pas valide.";
+            return;
+        }
+
+        _error = null;
+        if (Newsletter.Mode == NewsletterMode.Buttondown)
+        {
+            await Browser.SubmitAsync(_form);
+        }
+        else
+        {
+            await Browser.OpenAsync(Newsletter.MailtoLink(_email!));
+        }
+
+        _sent = true;
+        var first = await Game.SetFlagAsync(Flags.Subscribed);
+        if (first)
+        {
+            Toasts.Show("Newsletter", $"Bienvenue parmi les abonnés · +{Rules.XpSubscribe} XP", "pigeonnier");
+        }
+
+        await World.ReleasePigeonAsync();
+    }
+}
