@@ -1,0 +1,64 @@
+<section class="intro" aria-labelledby="intro-title">
+    <div class="intro-card">
+        <p class="intro-kicker">Portfolio · Blog · Jeu</p>
+        <h1 id="intro-title">Le Monde<br /><span>d'Ernest</span></h1>
+        <p class="intro-sub">
+            Bienvenue sur mon île. Chaque bâtiment raconte une partie de mon parcours : projets, compétences,
+            formation… et mon Journal. Explore-les tous pour débloquer la quête finale.
+        </p>
+
+        <ul class="intro-hints">
+            <li><kbd>Clic</kbd> sur un bâtiment pour le visiter</li>
+            <li><kbd>Glisser</kbd> pour tourner, <kbd>molette</kbd> pour zoomer</li>
+            <li><kbd>←</kbd> <kbd>→</kbd> pour passer d'un lieu à l'autre</li>
+        </ul>
+
+        @if (Failed)
+        {
+            <p class="intro-error" role="alert">
+                Ton navigateur n'arrive pas à afficher la 3D. Le Journal et la version classique restent accessibles.
+            </p>
+            <div class="intro-actions">
+                <a class="btn-enter" href="journal">Lire le Journal</a>
+                <a class="btn-secondary" href="classique/" target="_top">Version classique</a>
+            </div>
+        }
+        else
+        {
+            @if (Returning)
+            {
+                <p class="intro-welcome">Content de te revoir@(Name is { } n ? $", {n}" : "") ! Ta progression t'attend.</p>
+            }
+            else
+            {
+                <div class="intro-name">
+                    <label for="visitor-name">Comment t'appelles-tu, voyageur ?</label>
+                    <input id="visitor-name" maxlength="24" placeholder="Ton prénom (facultatif)" autocomplete="given-name"
+                           @bind="_name" @bind:event="oninput" @onkeydown="OnKeyDown" />
+                </div>
+            }
+
+            <button type="button" class="btn-enter" disabled="@(!Ready)" @onclick="EnterAsync">
+                @(Ready ? (Returning ? "Reprendre l'exploration" : "Entrer dans le monde") : "Chargement du monde…")
+            </button>
+
+            <p class="intro-alt">
+                <a href="journal">Lire directement le Journal</a> · <a href="classique/" target="_top">Version classique</a>
+            </p>
+        }
+    </div>
+</section>
+
+@code {
+    [Parameter] public bool Ready { get; set; }
+    [Parameter] public bool Failed { get; set; }
+    [Parameter] public bool Returning { get; set; }
+    [Parameter] public string? Name { get; set; }
+    [Parameter] public EventCallback<string?> OnEnter { get; set; }
+
+    private string? _name;
+
+    private Task EnterAsync() => Ready ? OnEnter.InvokeAsync(_name) : Task.CompletedTask;
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Enter" ? EnterAsync() : Task.CompletedTask;
+}

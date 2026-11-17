@@ -1,0 +1,26 @@
+<aside id="panel" class="panel" aria-labelledby="panel-title">
+    <header class="panel-head">
+        <div>
+            <p class="panel-kicker">@Place.Kicker</p>
+            <h2 id="panel-title">@Place.Name</h2>
+        </div>
+        <button type="button" class="panel-close" @onclick="OnClose" aria-label="Fermer le panneau">
+            <Icon Name="close" />
+        </button>
+    </header>
+
+    <div class="panel-body">
+        <DynamicComponent Type="Place.Content" />
+    </div>
+
+    <footer class="panel-foot">
+        <button type="button" class="panel-nav" @onclick="() => OnStep.InvokeAsync(-1)">← Lieu précédent</button>
+        <button type="button" class="panel-nav" @onclick="() => OnStep.InvokeAsync(1)">Lieu suivant →</button>
+    </footer>
+</aside>
+
+@code {
+    [Parameter, EditorRequired] public Place Place { get; set; } = default!;
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback<int> OnStep { get; set; }
+}

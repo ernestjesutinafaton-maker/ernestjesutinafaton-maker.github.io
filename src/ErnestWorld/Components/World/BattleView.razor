@@ -1,0 +1,410 @@
+@implements IDisposable
+@inject GameState Game
+@inject WorldService World
+@inject ToastService Toasts
+
+<div class="battle @_fx @(_battle?.Phase == 2 ? "is-enraged" : null)" @ref="_root" tabindex="-1" @onkeydown="OnKeyAsync">
+    <div class="battle-vignette" aria-hidden="true"></div>
+
+    <header class="boss-plate">
+        <span class="boss-emblem"><Icon Name="@Campaign.IconOf(Boss.Id)" Size="22" /></span>
+        <div class="boss-meta">
+            <p class="boss-title">@Boss.Title@(_rematch ? " · revanche" : "")</p>
+            <h2>@Boss.Name</h2>
+            <div class="hp" role="progressbar" aria-label="Points de vie du boss"
+                 aria-valuemin="0" aria-valuemax="@Boss.MaxHp" aria-valuenow="@Hp">
+                <span class="hp-ghost" style="width: @Percent(_ghostHp)%"></span>
+                <span class="hp-fill" style="width: @Percent(Hp)%"></span>
+                <span class="hp-text">@Hp / @Boss.MaxHp PV</span>
+            </div>
+        </div>
+        @if (_battle?.Phase == 2)
+        {
+            <span class="rage-badge"><Icon Name="flame" Size="14" /> En rage</span>
+        }
+    </header>
+
+    @if (_pop is not null)
+    {
+        <div class="damage-pop @(_pop.Critical ? "is-crit" : null) @(_pop.Hurt ? "is-hurt" : null)" @key="_pop.Key">@_pop.Text</div>
+    }
+
+    <section class="battle-card" id="battle-card" aria-live="polite">
+        @switch (_stage)
+        {
+            case Stage.Intro:
+                <p class="battle-kicker">Niveau @Boss.Level · combat de boss</p>
+                <p class="battle-lore">@Boss.Lore</p>
+                <ul class="battle-rules">
+                    <li><Icon Name="heart" Size="16" /> <strong>@_stats.Hearts cœurs</strong> grâce à ton rang (@Game.Level.Title)</li>
+                    <li><Icon Name="spark" Size="16" /> <strong>@_stats.Hints indices</strong> : chacun retire deux mauvaises réponses</li>
+                    <li><Icon Name="bolt" Size="16" /> Trois bonnes réponses d'affilée : <strong>coup critique</strong> (dégâts ×2)</li>
+                </ul>
+                @if (_rematch)
+                {
+                    <p class="small-print">Revanche : pas d'XP cette fois, juste la gloire.</p>
+                }
+                <div class="battle-actions">
+                    <button type="button" class="btn-fight" @onclick="FightAsync"><Icon Name="sword" Size="18" /> Combattre !</button>
+                    <button type="button" class="link-btn" @onclick="ExitAsync">Plus tard</button>
+                </div>
+                break;
+
+            case Stage.Question or Stage.Feedback when _battle is not null:
+                var asked = _battle.Current;
+                var feedback = _stage == Stage.Feedback && _last is not null;
+
+                <div class="battle-status">
+                    <div class="hearts" aria-label="@_battle.Hearts cœurs sur @_battle.MaxHearts">
+                        @for (var i = 0; i < _battle.MaxHearts; i++)
+                        {
+                            <span class="heart @(i < _battle.Hearts ? "is-full" : "is-empty")"><Icon Name="heart" Size="20" /></span>
+                        }
+                    </div>
+                    @if (_battle.Combo >= 2)
+                    {
+                        <span class="combo">Combo ×@_battle.Combo</span>
+                    }
+                    <span class="q-count">Question @_battle.QuestionNumber</span>
+                </div>
+
+                <h3 class="question">@asked.Source.Prompt</h3>
+                @if (asked.Source.Code is { } snippet)
+                {
+                    <pre class="question-code"><code>@snippet</code></pre>
+                }
+
+                <div class="choices">
+                    @for (var i = 0; i < asked.Choices.Count; i++)
+                    {
+                        var index = i;
+                        var removed = asked.Removed.Contains(index);
+                        var state = !feedback ? null
+                            : index == _last!.CorrectIndex ? "is-correct"
+                            : index == _chosen ? "is-wrong" : "is-dim";
+                        <button type="button" class="choice @(removed ? "is-removed" : null) @state"
+                                disabled="@(removed || feedback)" @onclick="() => AnswerAsync(index)">
+                            <span class="choice-key">@((char)('A' + index))</span>
+                            <span class="choice-text">@asked.Choices[index]</span>
+                        </button>
+                    }
+                </div>
+
+                @if (feedback)
+                {
+                    <div class="verdict @(_last!.Correct ? "is-good" : "is-bad")">
+                        <p class="verdict-title">@VerdictTitle</p>
+                        <p>@_last.Explanation</p>
+                        @if (!_last.Correct && asked.Source.HintPlace is { } hint && Island.Find(hint) is { } place)
+                        {
+                            <p class="small-print">La réponse se trouve aussi dans un lieu de l'île : <strong>@place.Name</strong>.</p>
+                        }
+                    </div>
+                    <div class="battle-actions">
+                        <button type="button" class="btn-fight" @onclick="ContinueAsync">@ContinueLabel</button>
+                        <span class="key-hint">ou touche Entrée</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="battle-actions is-small">
+                        <button type="button" class="link-btn" @onclick="UseHintAsync" disabled="@(_battle.Hints == 0)">
+                            <Icon Name="spark" Size="16" /> Indice (@_battle.Hints)
+                        </button>
+                        <button type="button" class="link-btn danger" @onclick="ExitAsync">Fuir</button>
+                        <span class="key-hint">Touches 1 à 4 pour répondre</span>
+                    </div>
+                }
+                break;
+
+            case Stage.Victory when _battle is not null:
+                <div class="result is-victory">
+                    <p class="result-kicker">Victoire</p>
+                    <h3>@Boss.Name est vaincu !</h3>
+                    <p class="result-line">@Boss.DefeatLine</p>
+                    <ul class="rewards">
+                        @if (_firstWin)
+                        {
+                            <li><Icon Name="spark" Size="16" /> +@Boss.XpReward XP</li>
+                            <li><Icon Name="trophy" Size="16" /> Succès : @Rules.Achievements.First(a => a.Id == Boss.AchievementId).Name</li>
+                        }
+                        @if (_battle.IsFlawless)
+                        {
+                            <li><Icon Name="shield" Size="16" /> Sans une égratignure !</li>
+                        }
+                        <li><Icon Name="bolt" Size="16" /> Meilleur combo : ×@_battle.BestCombo</li>
+                    </ul>
+                    @if (_firstWin && _next is not null)
+                    {
+                        <p class="unlock">Niveau @_next.Number débloqué : <strong>@_next.Name</strong></p>
+                    }
+                    else if (_firstWin)
+                    {
+                        <p class="unlock">L'île est sauvée ! Une dernière quête t'attend au <strong>Phare</strong>.</p>
+                    }
+                    <div class="battle-actions">
+                        <button type="button" class="btn-fight" @onclick="ExitAsync">Retour sur l'île</button>
+                    </div>
+                </div>
+                break;
+
+            case Stage.Defeat:
+                <div class="result is-defeat">
+                    <p class="result-kicker">Défaite</p>
+                    <h3>@Boss.Name garde son trône…</h3>
+                    <p>
+                        Les réponses se cachent dans les bâtiments de l'île et dans le Journal.
+                        Utilise tes indices, et monte en rang pour partir avec plus de cœurs.
+                    </p>
+                    <div class="battle-actions">
+                        <button type="button" class="btn-fight" @onclick="FightAsync"><Icon Name="sword" Size="18" /> Réessayer</button>
+                        <button type="button" class="link-btn" @onclick="ExitAsync">Retour sur l'île</button>
+                    </div>
+                </div>
+                break;
+        }
+    </section>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string BossId { get; set; } = "";
+    [Parameter] public EventCallback OnExit { get; set; }
+
+    private enum Stage { Intro, Question, Feedback, Victory, Defeat }
+
+    private sealed record Pop(Guid Key, string Text, bool Critical, bool Hurt);
+
+    private BossDefinition Boss => Bestiary.Find(BossId)!;
+
+    private ElementReference _root;
+    private Battle? _battle;
+    private Stage _stage = Stage.Intro;
+    private TurnResult? _last;
+    private int _chosen = -1;
+    private int _ghostHp;
+    private string? _fx;
+    private Pop? _pop;
+    private bool _focusPending = true;
+    private bool _rematch;
+    private bool _firstWin;
+    private bool _disposed;
+    private (int Hearts, int Hints) _stats;
+    private CampaignLevel? _next;
+
+    private int Hp => _battle?.BossHp ?? Boss.MaxHp;
+    private double Percent(int hp) => Math.Round(hp * 100.0 / Boss.MaxHp, 1);
+
+    private string VerdictTitle => _last switch
+    {
+        { Correct: true, Critical: true } => $"Coup critique ! −{_last.Damage} PV",
+        { Correct: true, Combo: >= 2 } => $"Combo ×{_last.Combo} ! −{_last.Damage} PV",
+        { Correct: true } => $"Touché ! −{_last.Damage} PV",
+        _ => $"{Boss.AttackLine} −1 cœur",
+    };
+
+    private string ContinueLabel => _last?.Status switch
+    {
+        BattleStatus.Victory => "Achever le boss !",
+        BattleStatus.Defeat => "Voir le résultat",
+        _ => "Question suivante",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _rematch = Game.HasDefeated(BossId);
+        _stats = Rules.BattleStats(Game.Level.Number);
+        _ghostHp = Boss.MaxHp;
+        await World.BattleStartAsync(BossId);
+        await World.PlayAsync("roar");
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_focusPending)
+        {
+            _focusPending = false;
+            try
+            {
+                await _root.FocusAsync(preventScroll: true);
+            }
+            catch (JSException)
+            {
+            }
+        }
+    }
+
+    private async Task FightAsync()
+    {
+        _battle = new Battle(Boss, _stats.Hearts, _stats.Hints, Environment.TickCount);
+        _ghostHp = Boss.MaxHp;
+        _stage = Stage.Question;
+        _chosen = -1;
+        _last = null;
+        _focusPending = true;
+        await World.PlayAsync("start");
+    }
+
+    private async Task AnswerAsync(int index)
+    {
+        if (_battle is null || _stage != Stage.Question || _battle.Current.Removed.Contains(index))
+        {
+            return;
+        }
+
+        _chosen = index;
+        _last = _battle.Answer(index);
+        _stage = Stage.Feedback;
+        _focusPending = true;
+
+        if (_last.Correct)
+        {
+            ShowPop(_last.Critical ? $"−{_last.Damage} CRITIQUE !" : $"−{_last.Damage}", _last.Critical, hurt: false);
+            Flash(_last.Critical ? "fx-crit" : "fx-hit");
+            await World.BossHitAsync(BossId, _last.Critical, _battle.HpRatio);
+            await World.PlayAsync(_last.Critical ? "crit" : "hit");
+            if (_last.Critical)
+            {
+                await Game.SetFlagAsync(Flags.Critical);
+            }
+
+            if (_last.PhaseChanged)
+            {
+                await World.BossEnrageAsync(BossId);
+                await World.PlayAsync("roar");
+                Toasts.Show("Le boss entre en rage !", "Ses questions deviennent plus difficiles", "flame");
+            }
+        }
+        else
+        {
+            ShowPop("−1 cœur", critical: false, hurt: true);
+            Flash("fx-hurt");
+            await World.BossAttackAsync(BossId);
+            await World.PlayAsync("hurt");
+        }
+
+        _ = CatchUpGhostAsync();
+    }
+
+    private async Task ContinueAsync()
+    {
+        if (_battle is null || _last is null || _stage != Stage.Feedback)
+        {
+            return;
+        }
+
+        switch (_last.Status)
+        {
+            case BattleStatus.Victory:
+                await WinAsync();
+                break;
+            case BattleStatus.Defeat:
+                _stage = Stage.Defeat;
+                await World.PlayAsync("defeat");
+                break;
+            default:
+                _battle.Next();
+                _stage = Stage.Question;
+                _chosen = -1;
+                break;
+        }
+
+        _focusPending = true;
+    }
+
+    private async Task WinAsync()
+    {
+        _stage = Stage.Victory;
+        var level = Campaign.ForBoss(BossId);
+        _next = level is not null && level.Number < Campaign.Levels.Count ? Campaign.Levels[level.Number] : null;
+        await World.BossDefeatedAsync(BossId);
+        await World.PlayAsync("victory");
+        _firstWin = await Game.DefeatBossAsync(BossId, _battle!.IsFlawless);
+        if (_firstWin)
+        {
+            Toasts.Show("Boss vaincu", $"{Boss.Name} · +{Boss.XpReward} XP", Campaign.IconOf(BossId));
+        }
+    }
+
+    private async Task UseHintAsync()
+    {
+        if (_battle is null || _stage != Stage.Question)
+        {
+            return;
+        }
+
+        if (_battle.UseHint().Count > 0)
+        {
+            await World.PlayAsync("hint");
+        }
+    }
+
+    private async Task ExitAsync()
+    {
+        await World.BattleEndAsync();
+        await OnExit.InvokeAsync();
+    }
+
+    private async Task OnKeyAsync(KeyboardEventArgs e)
+    {
+        switch (_stage)
+        {
+            case Stage.Intro when e.Key is "Enter" or " ":
+                await FightAsync();
+                break;
+            case Stage.Question when e.Key is "1" or "2" or "3" or "4":
+                await AnswerAsync(e.Key[0] - '1');
+                break;
+            case Stage.Question when e.Key.Length == 1 && char.ToLowerInvariant(e.Key[0]) is >= 'a' and <= 'd':
+                await AnswerAsync(char.ToLowerInvariant(e.Key[0]) - 'a');
+                break;
+            case Stage.Question when e.Key is "h" or "H":
+                await UseHintAsync();
+                break;
+            case Stage.Feedback when e.Key is "Enter" or " ":
+                await ContinueAsync();
+                break;
+            case Stage.Defeat when e.Key == "Enter":
+                await FightAsync();
+                break;
+            case Stage.Victory when e.Key == "Enter":
+            case not Stage.Feedback when e.Key == "Escape":
+                await ExitAsync();
+                break;
+        }
+    }
+
+    private void ShowPop(string text, bool critical, bool hurt)
+    {
+        var pop = new Pop(Guid.NewGuid(), text, critical, hurt);
+        _pop = pop;
+        _ = ClearLaterAsync(1300, () =>
+        {
+            if (_pop == pop)
+            {
+                _pop = null;
+            }
+        });
+    }
+
+    private void Flash(string fx)
+    {
+        _fx = fx;
+        _ = ClearLaterAsync(500, () => _fx = null);
+    }
+
+    private Task CatchUpGhostAsync() => ClearLaterAsync(550, () => _ghostHp = Hp);
+
+    private async Task ClearLaterAsync(int delayMs, Action action)
+    {
+        await Task.Delay(delayMs);
+        if (_disposed)
+        {
+            return;
+        }
+
+        action();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => _disposed = true;
+}

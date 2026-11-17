@@ -1,0 +1,21 @@
+@inject GameState Game
+
+@* Lien externe, ouvert dans un nouvel onglet. « Flag » enregistre une action (succès). *@
+<a class="link-btn @(Primary ? "primary" : null)" href="@Href" target="_blank" rel="noopener" @onclick="RecordAsync">
+    @ChildContent <span aria-hidden="true">↗</span>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public string Href { get; set; } = "";
+    [Parameter] public bool Primary { get; set; }
+    [Parameter] public string? Flag { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task RecordAsync()
+    {
+        if (Flag is not null)
+        {
+            await Game.SetFlagAsync(Flag);
+        }
+    }
+}

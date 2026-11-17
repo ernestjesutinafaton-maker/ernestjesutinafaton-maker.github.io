@@ -1,0 +1,7 @@
+# Compilation .NET
+bin/
+obj/
+out/
+*.user
+.vs/
+.vscode/
