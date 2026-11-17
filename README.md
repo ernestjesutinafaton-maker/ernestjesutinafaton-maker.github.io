@@ -10,6 +10,12 @@ Le visiteur gagne de l'XP, monte de rang, affronte des boss et débloque des suc
 
 ![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)
 
+> **In English:** my portfolio and blog, as a 3D game. Explore an island where every building is a part of my journey,
+> fight 5 bosses in turn-based battles where questions about my projects are your attacks, and read my blog.
+> Built with **C# (Blazor WebAssembly, .NET 10)**, **Three.js**, xUnit and GitHub Actions. **[Play it](https://ernestjesutinafaton-maker.github.io)**
+>
+> ⭐ Si le projet te plaît, une étoile sur GitHub m'aide beaucoup. If you like it, a star really helps!
+
 ## Technologies
 
 | Partie | Technologie |
