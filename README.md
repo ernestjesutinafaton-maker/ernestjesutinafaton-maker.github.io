@@ -1,10 +1,14 @@
 # Le Monde d'Ernest
 
+[![Déploiement](https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/actions/workflows/deploy.yml)
+
 Portfolio et blog d'Ernest Afaton, sous la forme d'une île en 3D à explorer.
 Chaque bâtiment est une section : projets, compétences, formation, le Journal (blog) et la newsletter.
-Le visiteur gagne de l'XP, monte de niveau et débloque des succès en explorant et en lisant.
+Le visiteur gagne de l'XP, monte de rang, affronte des boss et débloque des succès en explorant et en lisant.
 
 **Site :** https://ernestjesutinafaton-maker.github.io
+
+![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)
 
 ## Technologies
 
