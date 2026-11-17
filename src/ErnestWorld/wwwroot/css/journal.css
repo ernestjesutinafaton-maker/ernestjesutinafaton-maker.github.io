@@ -359,8 +359,9 @@ a.btn-enter { display: inline-block; text-decoration: none; }
 .article-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 1.1rem 0 0; font-size: 0.88rem; color: var(--ink-mute); }
 
 .prose { font-size: 1.1rem; line-height: 1.8; color: #ddd8f0; }
+/* Espacement entre les paragraphes (« > * » avant « > * + * » : à priorité égale, la seconde règle gagne) */
+.prose > * { margin: 0; }
 .prose > * + * { margin-top: 1.15em; }
-.prose p { margin: 0; }
 .prose h1, .prose h2, .prose h3 { font-family: var(--title); color: var(--ink); line-height: 1.25; margin: 2.2em 0 0.6em; }
 .prose h1 { font-size: 1.9rem; }
 .prose h2 { font-size: 1.55rem; }
