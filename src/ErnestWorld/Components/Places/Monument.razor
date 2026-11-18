@@ -1,12 +1,37 @@
+<h3>@T("Certifications", "Certifications")</h3>
+<div class="mini-cards">
+    <div class="mini-card">
+        <h4>Claude Academy · Anthropic <span class="tag tag-live">@T("6 certificats", "6 certificates")</span></h4>
+        <ul class="list">
+            <li>Building with the Claude API</li>
+            <li>Claude Code in action</li>
+            <li>Introduction to Model Context Protocol</li>
+            <li>Introduction to evals</li>
+            <li>AI capabilities and limitations</li>
+            <li>Building effective human-agent teams</li>
+        </ul>
+    </div>
+    <div class="mini-card">
+        <h4>LinkedIn Learning <span class="tag tag-live">@T("4 certificats", "4 certificates")</span></h4>
+        <ul class="list" lang="fr">
+            <li>Les fondements de la programmation</li>
+            <li>Examen blanc pour la préparation à la certification CAPM®</li>
+            <li>Créer et lancer sa startup avec des ressources limitées</li>
+            <li>L'IA et le cerveau humain : Reprendre le contrôle de son attention</li>
+        </ul>
+        @if (En)
+        {
+            <p class="small-print">Course titles are in French: programming fundamentals, a CAPM® practice exam, launching a startup, AI and attention.</p>
+        }
+    </div>
+</div>
+
+<h3>@T("Distinctions et diplômes", "Awards and diplomas")</h3>
 <div class="mini-cards">
     <div class="mini-card">
         <h4>@T("2e place · Workshop National IoT", "2nd place · National IoT Workshop") <span class="tag tag-gold">@T("Trophée", "Trophy")</span></h4>
         <p>@T("Boîte à lecture NFC, projet de groupe : lecture de tags sur Raspberry Pi, servomoteurs pilotés par Arduino, interface Tkinter.",
               "NFC reading box, team project: tag reading on a Raspberry Pi, Arduino-driven servo motors, Tkinter interface.")</p>
-    </div>
-    <div class="mini-card">
-        <h4>Anthropic Academy <span class="tag">@T("En cours", "In progress")</span></h4>
-        <p>@T("Certification sur l'usage et l'intégration de Claude.", "Certification on using and integrating Claude.")</p>
     </div>
     <div class="mini-card">
         <h4>@T("BTS SIO option SLAM", "BTS SIO, SLAM option") <span class="tag">@T("Session 2027", "2027 exams")</span></h4>
@@ -15,9 +40,10 @@
     </div>
 </div>
 
-<p class="small-print">
-    <a href="./#certifications" target="_top">@T("Toutes mes certifications sur le portfolio", "All my certifications on the portfolio")</a>
-</p>
+<div class="links">
+    <a class="link-btn" href="./#certifications" target="_top">@T("Les certifications sur le portfolio", "Certifications on the portfolio")</a>
+    <ExtLink Href="https://www.linkedin.com/in/ernest-afaton-1280a4361/details/certifications/">@T("Sur LinkedIn", "On LinkedIn")</ExtLink>
+</div>
 
 <h3>@T("Ce que j'aime", "What I love")</h3>
 <Chips Values="@T("Échecs, Football, Impression 3D, IA", "Chess, Football, 3D printing, AI")" />
