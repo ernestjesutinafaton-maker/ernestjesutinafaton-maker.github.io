@@ -5,16 +5,17 @@
 @{
     var level = Game.Level;
     var percent = (int)Math.Round(level.Progress(Game.Xp) * 100);
+    var stats = Rules.BattleStats(level.Number);
 }
 
 <div class="dialog-backdrop" @onclick="OnClose">
     <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="achievements-title" @onclick:stopPropagation="true">
         <header class="panel-head">
             <div>
-                <p class="panel-kicker">Salle des trophées</p>
-                <h2 id="achievements-title">Tes succès</h2>
+                <p class="panel-kicker">@T("Salle des trophées", "Trophy room")</p>
+                <h2 id="achievements-title">@T("Tes succès", "Your achievements")</h2>
             </div>
-            <button type="button" class="panel-close" @onclick="OnClose" aria-label="Fermer">
+            <button type="button" class="panel-close" @onclick="OnClose" aria-label="@T("Fermer", "Close")">
                 <Icon Name="close" />
             </button>
         </header>
@@ -23,13 +24,17 @@
             <div class="level-card">
                 <div class="level-badge">@level.Number</div>
                 <div class="level-info">
-                    <p class="level-title">Rang @level.Number · @level.Title</p>
-                    <div class="xp is-large" role="progressbar" aria-label="Progression vers le rang suivant"
+                    <p class="level-title">@T("Rang", "Rank") @level.Number · @T(level.Title)</p>
+                    <div class="xp is-large" role="progressbar" aria-label="@T("Progression vers le rang suivant", "Progress to the next rank")"
                          aria-valuemin="0" aria-valuemax="100" aria-valuenow="@percent">
                         <div class="xp-fill" style="width: @percent%"></div>
                     </div>
-                    <p class="xp-text">@Game.Xp XP@(level.NextXp is int next ? $" · encore {next - Game.Xp} XP avant le rang {level.Number + 1}" : " · rang maximum atteint")</p>
-                    <p class="xp-text">Au combat : @Rules.BattleStats(level.Number).Hearts cœurs et @Rules.BattleStats(level.Number).Hints indices</p>
+                    <p class="xp-text">
+                        @Game.Xp XP@(level.NextXp is int next
+                            ? T($" · encore {next - Game.Xp} XP avant le rang {level.Number + 1}", $" · {next - Game.Xp} more XP to rank {level.Number + 1}")
+                            : T(" · rang maximum atteint", " · max rank reached"))
+                    </p>
+                    <p class="xp-text">@T($"Au combat : {stats.Hearts} cœurs et {stats.Hints} indices", $"In battle: {stats.Hearts} hearts and {stats.Hints} hints")</p>
                 </div>
             </div>
 
@@ -40,27 +45,30 @@
                     <li class="achievement @(unlocked ? "is-unlocked" : null)">
                         <span class="achievement-icon"><Icon Name="@(unlocked ? achievement.Icon : "lock")" Size="20" /></span>
                         <div>
-                            <h3>@achievement.Name</h3>
-                            <p>@achievement.Description</p>
+                            <h3>@T(achievement.Name)</h3>
+                            <p>@T(achievement.Description)</p>
                         </div>
                         <span class="achievement-xp">+@Rules.XpPerAchievement XP</span>
                     </li>
                 }
             </ul>
 
-            <h3>Gagner de l'XP</h3>
+            <h3>@T("Gagner de l'XP", "Earning XP")</h3>
             <ul class="list">
-                <li>Vaincre un boss : <strong>de +@Bestiary.All.Min(b => b.XpReward) à +@Bestiary.All.Max(b => b.XpReward) XP</strong></li>
-                <li>Découvrir un lieu de l'île : <strong>+@Rules.XpPerPlace XP</strong></li>
-                <li>Lire un article du Journal jusqu'au bout : <strong>+@Rules.XpPerPost XP</strong></li>
-                <li>S'abonner à la newsletter : <strong>+@Rules.XpSubscribe XP</strong></li>
-                <li>Suivre toute la visite guidée : <strong>+@Rules.XpTour XP</strong></li>
-                <li>Chaque succès débloqué : <strong>+@Rules.XpPerAchievement XP</strong></li>
+                <li>@T("Vaincre un boss :", "Defeat a boss:") <strong>@T($"de +{Bestiary.All.Min(b => b.XpReward)} à +{Bestiary.All.Max(b => b.XpReward)} XP", $"+{Bestiary.All.Min(b => b.XpReward)} to +{Bestiary.All.Max(b => b.XpReward)} XP")</strong></li>
+                <li>@T("Découvrir un lieu de l'île :", "Discover a place on the island:") <strong>+@Rules.XpPerPlace XP</strong></li>
+                <li>@T("Lire un article du Journal jusqu'au bout :", "Read a Journal article to the end:") <strong>+@Rules.XpPerPost XP</strong></li>
+                <li>@T("S'abonner à la newsletter :", "Subscribe to the newsletter:") <strong>+@Rules.XpSubscribe XP</strong></li>
+                <li>@T("Suivre toute la visite guidée :", "Follow the whole guided tour:") <strong>+@Rules.XpTour XP</strong></li>
+                <li>@T("Chaque succès débloqué :", "Each achievement unlocked:") <strong>+@Rules.XpPerAchievement XP</strong></li>
             </ul>
 
-            <p class="small-print">Monter en rang donne plus de cœurs et d'indices pour les combats de boss. Ta progression est enregistrée dans ce navigateur uniquement.</p>
+            <p class="small-print">
+                @T("Monter en rang donne plus de cœurs et d'indices pour les combats de boss. Ta progression est enregistrée dans ce navigateur uniquement.",
+                    "Ranking up gives you more hearts and hints for boss battles. Your progress is saved in this browser only.")
+            </p>
             <button type="button" class="link-btn danger" @onclick="ResetAsync">
-                @(_confirmReset ? "Confirmer : tout effacer ?" : "Recommencer l'aventure")
+                @(_confirmReset ? T("Confirmer : tout effacer ?", "Confirm: erase everything?") : T("Recommencer l'aventure", "Restart the adventure"))
             </button>
         </div>
     </div>

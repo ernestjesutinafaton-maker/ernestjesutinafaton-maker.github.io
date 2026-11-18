@@ -1,8 +1,30 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
+@inject LanguageService L
+@inject NavigationManager Nav
 
-@* L'île reste affichée en permanence : les pages (Journal, articles) s'ouvrent par-dessus. *@
-<WorldView />
+@* La langue est choisie avant d'afficher quoi que ce soit, puis diffusée à tous les composants. *@
+@if (_ready)
+{
+    <CascadingValue Value="L.Current" Name="lang">
+        @* L'île reste affichée en permanence : les pages (Journal, articles, CV) s'ouvrent par-dessus. *@
+        <WorldView />
+        @Body
+        <Toasts />
+    </CascadingValue>
+}
 
-@Body
+@code {
+    private bool _ready;
 
-<Toasts />
+    protected override async Task OnInitializedAsync()
+    {
+        L.Changed += OnLanguageChanged;
+        await L.InitAsync(Nav.Uri);
+        _ready = true;
+    }
+
+    private void OnLanguageChanged() => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => L.Changed -= OnLanguageChanged;
+}

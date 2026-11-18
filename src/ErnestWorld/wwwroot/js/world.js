@@ -147,6 +147,7 @@ let started = false, paused = false, night = false, nightT = 0, battleId = null,
 let activeId = null, hoverId = null, hoverBoss = null, tween = null, rafId = 0, downAt = null;
 let disposers = [];
 let mini = null, miniFrame = 0;
+let STR = { boss: "Boss", defeated: "vaincu" }; // petits mots des étiquettes, fournis par le C# dans la bonne langue
 const wind = { value: 0 };
 const shake = { amp: 0, offset: new THREE.Vector3() };
 const clock = new THREE.Clock();
@@ -190,7 +191,8 @@ const BOSS_LAYOUT = {
    API APPELÉE DEPUIS C#
    ========================================================================= */
 
-export function init(canvas, labelsContainer, dotnetRef, places, visited, bossList) {
+export function init(canvas, labelsContainer, dotnetRef, places, visited, bossList, strings) {
+  if (strings) STR = strings;
   canvasEl = canvas;
   labelsEl = labelsContainer;
   dotnet = dotnetRef;
@@ -1933,8 +1935,24 @@ function buildMarkersAndLabels(places, bossList) {
 }
 
 function updateBossLabel(boss, el) {
-  el.querySelector(".label-name").textContent = boss.state === "defeated" ? `${boss.label} · vaincu` : `Boss · ${boss.label}`;
+  el.querySelector(".label-name").textContent = boss.state === "defeated" ? `${boss.label} · ${STR.defeated}` : `${STR.boss} · ${boss.label}`;
   el.classList.toggle("is-defeated", boss.state === "defeated");
+}
+
+/** Change la langue des étiquettes (appelé par le C# quand le visiteur change de langue). */
+export function setLanguage(places, bossList, strings) {
+  if (strings) STR = strings;
+  for (const p of places) {
+    const el = labels?.get(p.id);
+    if (el) el.querySelector(".label-name").textContent = p.label;
+  }
+  for (const info of bossList) {
+    const boss = bosses.get(info.id);
+    if (!boss) continue;
+    boss.label = info.label;
+    const el = bossLabels.get(info.id);
+    if (el) updateBossLabel(boss, el);
+  }
 }
 
 function setHover(id) {

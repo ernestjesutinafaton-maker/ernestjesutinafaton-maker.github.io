@@ -20,12 +20,17 @@ public sealed class WorldService(IJSRuntime js) : IAsyncDisposable
         DotNetObjectReference<T> listener,
         IEnumerable<PlaceDto> places,
         IEnumerable<string> visited,
-        IEnumerable<BossDto> bosses)
+        IEnumerable<BossDto> bosses,
+        WorldStrings strings)
         where T : class
     {
         _module = await js.InvokeAsync<IJSObjectReference>("import", "./js/world.js");
-        await _module.InvokeVoidAsync("init", canvas, labels, listener, places.ToArray(), visited.ToArray(), bosses.ToArray());
+        await _module.InvokeVoidAsync("init", canvas, labels, listener, places.ToArray(), visited.ToArray(), bosses.ToArray(), strings);
     }
+
+    /// <summary>Change la langue des étiquettes 3D.</summary>
+    public ValueTask SetLanguageAsync(IEnumerable<PlaceDto> places, IEnumerable<BossDto> bosses, WorldStrings strings) =>
+        CallAsync("setLanguage", places.ToArray(), bosses.ToArray(), strings);
 
     // Exploration
     public ValueTask EnterAsync() => CallAsync("enter");

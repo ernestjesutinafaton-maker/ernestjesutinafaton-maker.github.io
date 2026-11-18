@@ -157,6 +157,58 @@ kbd {
 
 .intro-alt { margin: 1.5rem 0 0; font-size: 0.9rem; color: var(--ink-mute); }
 
+/* Choix de la langue, en haut de l'écran d'accueil */
+.intro .lang-switch {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin: 0 0 1.4rem;
+  padding: 0.25rem;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+.intro .lang-switch button {
+  padding: 0.35rem 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  font-family: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--ink-mute);
+  cursor: pointer;
+  transition: background-color 0.2s, color 0.2s;
+}
+.intro .lang-switch button:hover { color: var(--ink); }
+.intro .lang-switch button.is-on { background: rgba(255, 255, 255, 0.14); color: var(--ink); }
+
+/* Lien vers le portfolio classique, pour qui n'a pas le temps de jouer */
+.intro-cv {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0 auto 1.6rem;
+  padding: 0.7rem 1.1rem;
+  border: 1px solid var(--edge-strong);
+  border-radius: 1rem;
+  background: var(--glass);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  color: var(--ink);
+  text-decoration: none;
+  text-align: left;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.intro-cv:hover { border-color: var(--gold); transform: translateY(-1px); }
+.intro-cv svg { flex-shrink: 0; color: var(--gold); }
+.intro-cv span { display: flex; flex-direction: column; }
+.intro-cv strong { font-size: 0.95rem; }
+.intro-cv small { font-size: 0.8rem; color: var(--ink-mute); }
+
+.tool-lang { font-family: var(--mono); font-size: 0.78rem; font-weight: 600; }
+
 /* ================= HUD ================= */
 .hud { position: fixed; inset: 0; z-index: 20; pointer-events: none; }
 .hud > * { pointer-events: auto; }

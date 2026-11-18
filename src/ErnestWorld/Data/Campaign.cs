@@ -20,10 +20,10 @@ public enum LevelState
 }
 
 /// <summary>Un objectif de niveau (découvrir un lieu, lire des articles…).</summary>
-public sealed record Objective(string Label, Func<GameState, bool> IsDone, string? PlaceId = null, string? Href = null);
+public sealed record Objective(Txt Label, Func<GameState, bool> IsDone, string? PlaceId = null, string? Href = null);
 
 /// <summary>Un niveau de la campagne, gardé par un boss.</summary>
-public sealed record CampaignLevel(int Number, string Name, string Story, string BossId, IReadOnlyList<Objective> Objectives)
+public sealed record CampaignLevel(int Number, Txt Name, Txt Story, string BossId, IReadOnlyList<Objective> Objectives)
 {
     public BossDefinition Boss => Bestiary.Find(BossId)!;
 }
@@ -34,34 +34,49 @@ public sealed record CampaignLevel(int Number, string Name, string Story, string
 /// </summary>
 public static class Campaign
 {
+    private static Txt T(string fr, string en) => new(fr, en);
+
     public static IReadOnlyList<CampaignLevel> Levels { get; } =
     [
-        new(1, "L'Arrivée",
-            "Tu poses le pied sur l'île. Apprends qui est Ernest avant d'affronter le premier gardien.",
+        new(1, T("L'Arrivée", "The Arrival"),
+            T("Tu poses le pied sur l'île. Apprends qui est Ernest avant d'affronter le premier gardien.",
+              "You set foot on the island. Learn who Ernest is before facing the first guardian."),
             "bug", [Visit("chateau"), Visit("forge"), Visit("academie")]),
-        new(2, "Les Bâtisseurs",
-            "Les projets d'Ernest forment la ville. L'Hydre ne craint que ceux qui les connaissent.",
+        new(2, T("Les Bâtisseurs", "The Builders"),
+            T("Les projets d'Ernest forment la ville. L'Hydre ne craint que ceux qui les connaissent.",
+              "Ernest's projects make up the town. The Hydra only fears those who know them."),
             "hydre", [Visit("banque"), Visit("marche"), Visit("observatoire"), Visit("arene")]),
-        new(3, "Le Réseau",
-            "Sous l'île court un réseau de câbles et de serveurs. Le Golem en garde l'entrée.",
+        new(3, T("Le Réseau", "The Network"),
+            T("Sous l'île court un réseau de câbles et de serveurs. Le Golem en garde l'entrée.",
+              "Beneath the island runs a web of cables and servers. The Golem guards the entrance."),
             "golem", [Visit("qg"), Visit("camp"), Visit("radio")]),
-        new(4, "Le Savoir",
-            "Les livres, les ruches et les parchemins cachent les secrets du code. Le Kraken rôde au large.",
+        new(4, T("Le Savoir", "The Knowledge"),
+            T("Les livres, les ruches et les parchemins cachent les secrets du code. Le Kraken rôde au large.",
+              "Books, hives and scrolls hold the secrets of code. The Kraken lurks offshore."),
             "kraken", [Visit("scriptorium"), Visit("bibliotheque"), Visit("ruche"), Read(1)]),
-        new(5, "La Tempête",
-            "Le ciel s'assombrit. Au sommet de la montagne, le Dragon de la Dette Technique se réveille.",
+        new(5, T("La Tempête", "The Storm"),
+            T("Le ciel s'assombrit. Au sommet de la montagne, le Dragon de la Dette Technique se réveille.",
+              "The sky darkens. At the top of the mountain, the Technical Debt Dragon awakens."),
             "dragon", [Visit("pigeonnier"), Visit("monument"), Read(2)]),
     ];
 
     private static Objective Visit(string placeId)
     {
         var name = Island.Find(placeId)!.Name;
-        return new($"Découvrir {char.ToLowerInvariant(name[0])}{name[1..]}", g => g.HasVisited(placeId), PlaceId: placeId);
+        return new(T($"Découvrir {LowerFirst(name.Fr)}", $"Discover {LowerFirst(name.En)}"), g => g.HasVisited(placeId), PlaceId: placeId);
     }
 
     private static Objective Read(int count) =>
-        new(count == 1 ? "Lire un article du Journal" : $"Lire {count} articles du Journal",
+        new(count == 1
+                ? T("Lire un article du Journal", "Read a Journal article")
+                : T($"Lire {count} articles du Journal", $"Read {count} Journal articles"),
             g => g.ReadCount >= count, Href: "journal");
+
+    /// <summary>« Le Château » → « le Château », « The Castle » → « the Castle », mais « MyDil HQ » reste tel quel.</summary>
+    private static string LowerFirst(string text) =>
+        text.StartsWith("Le ") || text.StartsWith("La ") || text.StartsWith("L'") || text.StartsWith("The ")
+            ? char.ToLowerInvariant(text[0]) + text[1..]
+            : text;
 
     public static CampaignLevel? ForBoss(string? bossId) => Levels.FirstOrDefault(l => l.BossId == bossId);
 
@@ -92,8 +107,8 @@ public static class Campaign
         ForBoss(bossId) is { } level && StateOf(level, game) is LevelState.BossReady or LevelState.Completed;
 
     /// <summary>L'état des boss pour le moteur 3D : « locked », « available » ou « defeated ».</summary>
-    public static IEnumerable<BossDto> ForWorld(GameState game) =>
-        Levels.Select(l => new BossDto(l.BossId, l.Boss.Name, StateOf(l, game) switch
+    public static IEnumerable<BossDto> ForWorld(GameState game, Lang lang) =>
+        Levels.Select(l => new BossDto(l.BossId, l.Boss.Name.Get(lang), StateOf(l, game) switch
         {
             LevelState.Completed => "defeated",
             LevelState.BossReady => "available",
@@ -114,3 +129,9 @@ public static class Campaign
 
 /// <summary>Ce que le moteur 3D doit savoir d'un boss.</summary>
 public sealed record BossDto(string Id, string Label, string State);
+
+/// <summary>Les petits mots affichés par le moteur 3D sur les étiquettes.</summary>
+public sealed record WorldStrings(string Boss, string Defeated)
+{
+    public static WorldStrings For(Lang lang) => lang == Lang.En ? new("Boss", "defeated") : new("Boss", "vaincu");
+}

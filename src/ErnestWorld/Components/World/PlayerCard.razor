@@ -6,26 +6,26 @@
     var percent = (int)Math.Round(level.Progress(Game.Xp) * 100);
 }
 
-<button type="button" class="player" @onclick="OnOpen" title="Voir mes succès">
+<button type="button" class="player" @onclick="OnOpen" title="@T("Voir mes succès", "See my achievements")">
     <span class="player-avatar" aria-hidden="true">
         @Initial
-        <span class="player-level">Rang @level.Number</span>
+        <span class="player-level">@T("Rang", "Rank") @level.Number</span>
     </span>
     <span class="player-info">
-        <span class="player-name">@(Game.VisitorName ?? "Voyageur")</span>
-        <span class="player-class">@level.Title · @Game.AchievementCount/@Rules.Achievements.Count succès</span>
-        <span class="xp" role="progressbar" aria-label="Progression vers le rang suivant"
+        <span class="player-name">@(Game.VisitorName ?? T("Voyageur", "Traveler"))</span>
+        <span class="player-class">@T(level.Title) · @Game.AchievementCount/@Rules.Achievements.Count @T("succès", "achievements")</span>
+        <span class="xp" role="progressbar" aria-label="@T("Progression vers le rang suivant", "Progress to the next rank")"
               aria-valuemin="0" aria-valuemax="100" aria-valuenow="@percent">
             <span class="xp-fill" style="width: @percent%"></span>
         </span>
-        <span class="xp-text">@Game.Xp XP@(level.NextXp is int next ? $" · rang suivant à {next}" : " · rang maximum")</span>
+        <span class="xp-text">@Game.Xp XP@(level.NextXp is int next ? T($" · rang suivant à {next}", $" · next rank at {next}") : T(" · rang maximum", " · max rank"))</span>
     </span>
 </button>
 
 @code {
     [Parameter] public EventCallback OnOpen { get; set; }
 
-    private string Initial => Game.VisitorName is { Length: > 0 } name ? name[..1].ToUpperInvariant() : "V";
+    private string Initial => Game.VisitorName is { Length: > 0 } name ? name[..1].ToUpperInvariant() : (En ? "T" : "V");
 
     protected override void OnInitialized() => Game.Changed += Refresh;
     private void Refresh() => _ = InvokeAsync(StateHasChanged);

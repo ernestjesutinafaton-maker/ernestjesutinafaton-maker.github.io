@@ -2,17 +2,18 @@
 @layout MainLayout
 @inject NavigationManager Nav
 
-<PageTitle>Page introuvable · Le Monde d'Ernest</PageTitle>
+<PageTitle>@T("Page introuvable · Le Monde d'Ernest", "Page not found · Ernest's World")</PageTitle>
 
 <div class="overlay">
     <div class="overlay-scroll">
         <div class="overlay-inner lost">
-            <p class="overlay-kicker">Erreur 404</p>
-            <h1>Cette contrée n'existe pas</h1>
-            <p>Le chemin que tu as suivi ne mène nulle part. Même les meilleurs cartographes se perdent parfois.</p>
+            <p class="overlay-kicker">@T("Erreur 404", "Error 404")</p>
+            <h1>@T("Cette contrée n'existe pas", "This land doesn't exist")</h1>
+            <p>@T("Le chemin que tu as suivi ne mène nulle part. Même les meilleurs cartographes se perdent parfois.", "The path you followed leads nowhere. Even the best cartographers get lost sometimes.")</p>
             <div class="links">
-                <a class="link-btn primary" href="@Nav.BaseUri">Retourner sur l'île</a>
-                <a class="link-btn" href="journal">Ouvrir le Journal</a>
+                <a class="link-btn primary" href="./" target="_top">@T("Voir le portfolio", "See the portfolio")</a>
+                <a class="link-btn" href="jeu/">@T("Retourner sur l'île", "Back to the island")</a>
+                <a class="link-btn" href="journal">@T("Ouvrir le Journal", "Open the Journal")</a>
             </div>
         </div>
     </div>

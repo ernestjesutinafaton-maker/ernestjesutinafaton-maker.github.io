@@ -1,30 +1,54 @@
-<p class="lead">
-    Je m'appelle <strong>Ernest Afaton</strong>. Étudiant en 2<sup>e</sup> année de Bachelor Informatique à l'EPSI Lyon,
-    je construis des applications web et mobiles, des infrastructures système et réseau, et des objets connectés.
-</p>
+@if (En)
+{
+    <p class="lead">
+        My name is <strong>Ernest Afaton</strong>. A second-year Computer Science Bachelor's student at EPSI Lyon (France),
+        I build web and mobile apps, system and network infrastructure, and connected devices.
+    </p>
+}
+else
+{
+    <p class="lead">
+        Je m'appelle <strong>Ernest Afaton</strong>. Étudiant en 2<sup>e</sup> année de Bachelor Informatique à l'EPSI Lyon,
+        je construis des applications web et mobiles, des infrastructures système et réseau, et des objets connectés.
+    </p>
+}
 
 <dl class="stat-grid">
-    <div class="stat"><dt>Formation</dt><dd>Bachelor Informatique · B2</dd></div>
-    <div class="stat"><dt>Parcours</dt><dd>Conception et Développement</dd></div>
-    <div class="stat"><dt>Diplôme</dt><dd>BTS SIO SLAM · 2027</dd></div>
-    <div class="stat"><dt>Recherche</dt><dd>Stage de 4 à 5 semaines</dd></div>
-    <div class="stat"><dt>Langues</dt><dd>Français · anglais B2</dd></div>
-    <div class="stat"><dt>Base</dt><dd>Lyon, France</dd></div>
+    <div class="stat"><dt>@T("Formation", "Education")</dt><dd>@T("Bachelor Informatique · B2", "CS Bachelor's · year 2")</dd></div>
+    <div class="stat"><dt>@T("Parcours", "Track")</dt><dd>@T("Conception et Développement", "Software design & development")</dd></div>
+    <div class="stat"><dt>@T("Diplôme", "Diploma")</dt><dd>@T("BTS SIO SLAM · 2027", "BTS SIO SLAM · 2027")</dd></div>
+    <div class="stat"><dt>@T("Recherche", "Looking for")</dt><dd>@T("Stage de 4 à 5 semaines", "A 4 to 5 week internship")</dd></div>
+    <div class="stat"><dt>@T("Langues", "Languages")</dt><dd>@T("Français · anglais B2", "French · English B2")</dd></div>
+    <div class="stat"><dt>@T("Base", "Based in")</dt><dd>@T("Lyon, France", "Lyon, France")</dd></div>
 </dl>
 
-<p>
-    J'ai mené en autonomie plusieurs applications complètes (web, mobile, SaaS) et un stage au cours duquel
-    j'ai développé une plateforme métier et déployé seul une infrastructure système complète.
-</p>
-<p>
-    Curieux, rigoureux et autonome, j'aime descendre dans les couches : d'un framework PHP écrit sans librairie
-    jusqu'à un serveur NAS conteneurisé accessible à distance. Et j'écris sur tout ça dans mon Journal.
-</p>
+@if (En)
+{
+    <p>
+        I have built several complete apps on my own (web, mobile, SaaS), and during my internship
+        I developed a business platform and deployed a full system infrastructure by myself.
+    </p>
+    <p>
+        Curious, thorough and independent, I like going down the layers: from a PHP framework written without any library
+        to a containerized NAS server reachable from anywhere. And I write about all of it in my Journal.
+    </p>
+}
+else
+{
+    <p>
+        J'ai mené en autonomie plusieurs applications complètes (web, mobile, SaaS) et un stage au cours duquel
+        j'ai développé une plateforme métier et déployé seul une infrastructure système complète.
+    </p>
+    <p>
+        Curieux, rigoureux et autonome, j'aime descendre dans les couches : d'un framework PHP écrit sans librairie
+        jusqu'à un serveur NAS conteneurisé accessible à distance. Et j'écris sur tout ça dans mon Journal.
+    </p>
+}
 
-<h3>Par où commencer ?</h3>
+<h3>@T("Par où commencer ?", "Where to start?")</h3>
 <div class="links">
-    <Goto To="forge">Mes compétences</Goto>
-    <Goto To="banque">Mon projet phare</Goto>
-    <Goto To="scriptorium">Le Journal</Goto>
-    <Goto To="phare">Me contacter</Goto>
+    <Goto To="forge">@T("Mes compétences", "My skills")</Goto>
+    <Goto To="banque">@T("Mon projet phare", "My flagship project")</Goto>
+    <Goto To="scriptorium">@T("Le Journal", "The Journal")</Goto>
+    <Goto To="phare">@T("Me contacter", "Contact me")</Goto>
 </div>

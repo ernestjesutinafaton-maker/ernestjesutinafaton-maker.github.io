@@ -2,18 +2,20 @@
 
 <button type="button" class="copy" @onclick="CopyAsync">
     <span>@Text</span>
-    <span aria-live="polite">@_label</span>
+    <span aria-live="polite">@(_result switch { true => T("Copié !", "Copied!"), false => T("Copie impossible", "Can't copy"), _ => T("Copier", "Copy") })</span>
 </button>
 
 @code {
     [Parameter, EditorRequired] public string Text { get; set; } = "";
-    private string _label = "Copier";
+
+    // null : pas encore copié ; vrai / faux : résultat de la dernière copie.
+    private bool? _result;
 
     private async Task CopyAsync()
     {
-        _label = await Browser.CopyAsync(Text) ? "Copié !" : "Copie impossible";
+        _result = await Browser.CopyAsync(Text);
         StateHasChanged();
         await Task.Delay(2000);
-        _label = "Copier";
+        _result = null;
     }
 }

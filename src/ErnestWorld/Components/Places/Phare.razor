@@ -4,24 +4,35 @@
 @if (Campaign.IsComplete(Game))
 {
     <div class="final">
-        <strong>Quête finale.</strong> Tu as vaincu les cinq gardiens et sauvé l'île. Il ne reste qu'une chose à faire…
+        <strong>@T("Quête finale.", "Final quest.")</strong>
+        @T("Tu as vaincu les cinq gardiens et sauvé l'île. Il ne reste qu'une chose à faire…", "You defeated the five guardians and saved the island. Only one thing left to do…")
     </div>
 }
 else
 {
     <p class="small-print">
-        Quête finale : @Game.DefeatedCount / @Campaign.Levels.Count boss vaincus.
-        Mais pas besoin d'attendre la fin de l'aventure pour m'écrire !
+        @T($"Quête finale : {Game.DefeatedCount} / {Campaign.Levels.Count} boss vaincus. Mais pas besoin d'attendre la fin de l'aventure pour m'écrire !",
+            $"Final quest: {Game.DefeatedCount} / {Campaign.Levels.Count} bosses defeated. But no need to wait for the end of the adventure to write to me!")
     </p>
 }
 
-<p class="lead">
-    Je recherche un <strong>stage de 4 à 5 semaines</strong> en développement ou en systèmes et réseaux.
-    Le phare est allumé : envoie-moi un signal.
-</p>
+@if (En)
+{
+    <p class="lead">
+        I'm looking for a <strong>4 to 5 week internship</strong> in software development or systems and networks.
+        The lighthouse is lit: send me a signal.
+    </p>
+}
+else
+{
+    <p class="lead">
+        Je recherche un <strong>stage de 4 à 5 semaines</strong> en développement ou en systèmes et réseaux.
+        Le phare est allumé : envoie-moi un signal.
+    </p>
+}
 
 <div class="links">
-    <a class="link-btn primary" href="mailto:ernestjesutinafaton@gmail.com" @onclick="ContactAsync">Envoyer un email</a>
+    <a class="link-btn primary" href="mailto:ernestjesutinafaton@gmail.com" @onclick="ContactAsync">@T("Envoyer un email", "Send an email")</a>
     <ExtLink Href="https://linkedin.com/in/ernest-afaton-1280a4361/" Flag="@Flags.Contact">LinkedIn</ExtLink>
     <ExtLink Href="https://github.com/ernestjesutinafaton-maker">GitHub</ExtLink>
 </div>
@@ -29,7 +40,8 @@ else
 <CopyButton Text="ernestjesutinafaton@gmail.com" />
 
 <p class="small-print">
-    Tu préfères tout lire d'un coup ? <a href="classique/" target="_top">Version classique du portfolio</a>.
+    @T("Tu préfères tout lire d'un coup ?", "Rather read everything at once?")
+    <a href="./" target="_top">@T("Retour au portfolio", "Back to the portfolio")</a>.
 </p>
 
 @code {

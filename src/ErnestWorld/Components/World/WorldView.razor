@@ -4,9 +4,10 @@
 @inject ToastService Toasts
 @inject NavigationManager Nav
 @inject BlogService Blog
+@inject LanguageService L
 
 <canvas id="scene" @ref="_canvas" class="scene @(_overlay ? "is-muted" : null)"
-        aria-label="Île en 3D du portfolio d'Ernest Afaton. La barre des lieux, en bas de l'écran, permet de naviguer au clavier."></canvas>
+        aria-label="@T("Île en 3D du portfolio d'Ernest Afaton. La barre des lieux, en bas de l'écran, permet de naviguer au clavier.", "3D island of Ernest Afaton's portfolio. The places bar at the bottom of the screen lets you navigate with the keyboard.")"></canvas>
 <div @ref="_labels" class="labels @(_overlay || !_entered || _battleBossId is not null ? "is-off" : null)" aria-hidden="true"></div>
 
 @if (!_overlay && !_entered)
@@ -27,35 +28,40 @@ else if (!_overlay)
                 <ResourceBar />
                 <QuestLog ActiveId="@_active?.Id" />
                 <canvas class="minimap" @ref="_minimap" width="200" height="200"
-                        aria-label="Mini-carte de l'île : clique pour t'y déplacer"></canvas>
+                        aria-label="@T("Mini-carte de l'île : clique pour t'y déplacer", "Island minimap: click to move there")"></canvas>
 
-                <div class="tools" role="toolbar" aria-label="Outils">
-                    <button type="button" class="tool" @onclick="() => _dialog = Dialog.Levels" title="Carte des niveaux" aria-label="Ouvrir la carte des niveaux">
+                <div class="tools" role="toolbar" aria-label="@T("Outils", "Tools")">
+                    <button type="button" class="tool tool-lang" @onclick="L.ToggleAsync"
+                            title="@T("Switch to English", "Passer en français")" aria-label="@T("Switch to English", "Passer en français")">
+                        @T("EN", "FR")
+                    </button>
+                    <a class="tool" href="./" target="_top" title="@T("Portfolio classique (CV complet)", "Classic portfolio (full resume)")"
+                       aria-label="@T("Revenir au portfolio classique", "Back to the classic portfolio")">
+                        <Icon Name="page" />
+                    </a>
+                    <button type="button" class="tool" @onclick="() => _dialog = Dialog.Levels" title="@T("Carte des niveaux", "Level map")" aria-label="@T("Ouvrir la carte des niveaux", "Open the level map")">
                         <Icon Name="flag" />
                     </button>
-                    <button type="button" class="tool" @onclick="ToggleNightAsync" title="Jour / nuit"
-                            aria-label="@(_night ? "Passer en mode jour" : "Passer en mode nuit")">
+                    <button type="button" class="tool" @onclick="ToggleNightAsync" title="@T("Jour / nuit", "Day / night")"
+                            aria-label="@(_night ? T("Passer en mode jour", "Switch to day") : T("Passer en mode nuit", "Switch to night"))">
                         <Icon Name="@(_night ? "sun" : "moon")" />
                     </button>
-                    <button type="button" class="tool @(_touring ? "is-on" : null)" @onclick="ToggleTourAsync" title="Visite guidée"
-                            aria-label="@(_touring ? "Arrêter la visite guidée" : "Lancer la visite guidée")" aria-pressed="@(_touring ? "true" : "false")">
+                    <button type="button" class="tool @(_touring ? "is-on" : null)" @onclick="ToggleTourAsync" title="@T("Visite guidée", "Guided tour")"
+                            aria-label="@(_touring ? T("Arrêter la visite guidée", "Stop the guided tour") : T("Lancer la visite guidée", "Start the guided tour"))" aria-pressed="@(_touring ? "true" : "false")">
                         <Icon Name="@(_touring ? "stop" : "play")" />
                     </button>
-                    <button type="button" class="tool" @onclick="HomeAsync" title="Vue d'ensemble" aria-label="Revenir à la vue d'ensemble">
+                    <button type="button" class="tool" @onclick="HomeAsync" title="@T("Vue d'ensemble", "Overview")" aria-label="@T("Revenir à la vue d'ensemble", "Back to the overview")">
                         <Icon Name="home" />
                     </button>
-                    <button type="button" class="tool" @onclick="() => _dialog = Dialog.Achievements" title="Succès" aria-label="Voir mes succès">
+                    <button type="button" class="tool" @onclick="() => _dialog = Dialog.Achievements" title="@T("Succès", "Achievements")" aria-label="@T("Voir mes succès", "See my achievements")">
                         <Icon Name="trophy" />
                     </button>
-                    <button type="button" class="tool" @onclick="ToggleSoundAsync" title="Son"
-                            aria-label="@(_soundOn ? "Couper le son" : "Activer le son")" aria-pressed="@(_soundOn ? "true" : "false")">
+                    <button type="button" class="tool" @onclick="ToggleSoundAsync" title="@T("Son", "Sound")"
+                            aria-label="@(_soundOn ? T("Couper le son", "Mute") : T("Activer le son", "Unmute"))" aria-pressed="@(_soundOn ? "true" : "false")">
                         <Icon Name="@(_soundOn ? "volume" : "mute")" />
                     </button>
-                    <a class="tool" href="journal" title="Le Journal (blog)" aria-label="Ouvrir le Journal">
+                    <a class="tool" href="journal" title="@T("Le Journal (blog)", "The Journal (blog)")" aria-label="@T("Ouvrir le Journal", "Open the Journal")">
                         <Icon Name="book" />
-                    </a>
-                    <a class="tool" href="classique/" target="_top" title="Version classique" aria-label="Version classique du portfolio">
-                        <Icon Name="page" />
                     </a>
                 </div>
 
@@ -65,8 +71,8 @@ else if (!_overlay)
                 {
                     <div class="tour-bar" role="status">
                         <Icon Name="play" Size="14" />
-                        Visite guidée · @(_tourIndex + 1) / @Island.Places.Count
-                        <button type="button" @onclick="StopTourAndRender">Arrêter</button>
+                        @T("Visite guidée", "Guided tour") · @(_tourIndex + 1) / @Island.Places.Count
+                        <button type="button" @onclick="StopTourAndRender">@T("Arrêter", "Stop")</button>
                     </div>
                 }
             </div>
@@ -114,6 +120,7 @@ else if (!_overlay)
         Nav.LocationChanged += OnLocationChanged;
         Game.Changed += OnGameChanged;
         Toasts.Shown += OnToast;
+        L.Changed += OnLanguageChanged;
         await Game.LoadAsync();
         _ = Blog.GetPostsAsync(); // préchargement du Journal
     }
@@ -126,9 +133,9 @@ else if (!_overlay)
             try
             {
                 await Game.LoadAsync();
-                var bosses = Campaign.ForWorld(Game).ToList();
+                var bosses = Campaign.ForWorld(Game, L.Current).ToList();
                 _bossStates = bosses.ToDictionary(b => b.Id, b => b.State);
-                await World.InitAsync(_canvas, _labels, _self, Island.ForWorld(), Game.Visited, bosses);
+                await World.InitAsync(_canvas, _labels, _self, Island.ForWorld(L.Current), Game.Visited, bosses, WorldStrings.For(L.Current));
                 _soundOn = await World.IsSoundOnAsync();
                 _ready = true;
                 if (_overlay)
@@ -144,7 +151,7 @@ else if (!_overlay)
             }
             catch (JSException)
             {
-                _failed = true; // pas de WebGL : l'écran d'accueil propose le Journal et la version classique
+                _failed = true; // pas de WebGL : l'écran d'accueil renvoie vers le portfolio classique et le Journal
             }
 
             StateHasChanged();
@@ -152,7 +159,7 @@ else if (!_overlay)
         }
 
         // La mini-carte apparaît avec l'interface : on la branche au moteur 3D une seule fois.
-        if (_ready && _entered && !_overlay && _battleBossId is null && !_minimapAttached && _minimap.Context is not null)
+        if (_ready && _entered && !_overlay && _battleBossId is null && !_minimapAttached && !string.IsNullOrEmpty(_minimap.Id))
         {
             _minimapAttached = true;
             await World.AttachMinimapAsync(_minimap);
@@ -161,7 +168,8 @@ else if (!_overlay)
 
     // ---------------------------------------------------------------- navigation
 
-    private static bool IsOverlay(string uri) => new Uri(uri).AbsolutePath.Trim('/').Length > 0;
+    /// <summary>Le Journal, un article ou une page d'erreur passent devant l'île ; « /jeu/ » (et « / » en local) montrent l'île.</summary>
+    private static bool IsOverlay(string uri) => new Uri(uri).AbsolutePath.Trim('/') is { Length: > 0 } path && path != "jeu";
 
     private static string? FromQuery(string uri, string key)
     {
@@ -229,8 +237,11 @@ else if (!_overlay)
         _entered = true;
         await EnterWorldAsync();
         var who = Game.VisitorName is { } n ? $", {n}" : string.Empty;
-        Toasts.Show($"Bienvenue sur l'île{who}",
-            Game.Visited.Count > 0 ? "Content de te revoir !" : "Niveau 1 : découvre le Château, la Forge et l'Académie", "chateau");
+        Toasts.Show(L.T($"Bienvenue sur l'île{who}", $"Welcome to the island{who}"),
+            Game.Visited.Count > 0
+                ? L.T("Content de te revoir !", "Good to see you again!")
+                : L.T("Niveau 1 : découvre le Château, la Forge et l'Académie", "Level 1: discover the Castle, the Forge and the Academy"),
+            "chateau");
         await OpenFromQueryAsync(Nav.Uri);
     }
 
@@ -275,7 +286,7 @@ else if (!_overlay)
 
         if (isNew)
         {
-            Toasts.Show("Lieu découvert", $"{place.Name} · +{Rules.XpPerPlace} XP", place.Id);
+            Toasts.Show(L.T("Lieu découvert", "Place discovered"), $"{L.T(place.Name)} · +{Rules.XpPerPlace} XP", place.Id, "discover");
         }
 
         await Game.VisitAsync(id);
@@ -328,9 +339,11 @@ else if (!_overlay)
         if (!Campaign.CanFight(bossId, Game))
         {
             var level = Campaign.ForBoss(bossId)!;
-            Toasts.Show($"{boss.Name} dort encore", Campaign.StateOf(level, Game) == LevelState.Locked
-                ? $"Termine d'abord les niveaux précédents"
-                : $"Termine les objectifs du niveau {level.Number} pour le réveiller", "lock");
+            Toasts.Show(L.T($"{L.T(boss.Name)} dort encore", $"{L.T(boss.Name)} is still asleep"),
+                Campaign.StateOf(level, Game) == LevelState.Locked
+                    ? L.T("Termine d'abord les niveaux précédents", "Finish the previous levels first")
+                    : L.T($"Termine les objectifs du niveau {level.Number} pour le réveiller", $"Complete the level {level.Number} objectives to wake it up"),
+                "lock");
             _dialog = Dialog.Levels;
             StateHasChanged();
             return;
@@ -361,7 +374,7 @@ else if (!_overlay)
     /// <summary>Met à jour les boss sur l'île et annonce ceux qui se réveillent.</summary>
     private async Task RefreshBossesAsync(bool announce)
     {
-        var bosses = Campaign.ForWorld(Game).ToList();
+        var bosses = Campaign.ForWorld(Game, L.Current).ToList();
         var changed = false;
         foreach (var boss in bosses)
         {
@@ -374,14 +387,16 @@ else if (!_overlay)
             changed = true;
             if (announce && boss.State == "available" && _battleBossId is null)
             {
-                Toasts.Show($"{boss.Label} s'est réveillé !", "Affronte-le depuis le panneau du niveau ou clique sur lui", Campaign.IconOf(boss.Id));
+                Toasts.Show(L.T($"{boss.Label} s'est réveillé !", $"{boss.Label} has awakened!"),
+                    L.T("Affronte-le depuis le panneau du niveau ou clique sur lui", "Fight it from the level panel, or click on it"), Campaign.IconOf(boss.Id));
                 await World.PlayAsync("roar");
             }
         }
 
         if (announce && changed && Campaign.IsComplete(Game) && _bossStates.Values.Any(s => s != "defeated"))
         {
-            Toasts.Show("Quête finale débloquée", "L'île est sauvée : rends-toi au Phare pour recruter Ernest", "phare");
+            Toasts.Show(L.T("Quête finale débloquée", "Final quest unlocked"),
+                L.T("L'île est sauvée : rends-toi au Phare pour recruter Ernest", "The island is saved: head to the Lighthouse to recruit Ernest"), "phare");
         }
 
         _bossStates = bosses.ToDictionary(b => b.Id, b => b.State);
@@ -391,14 +406,25 @@ else if (!_overlay)
         }
     }
 
-    // ---------------------------------------------------------------- jour / nuit, son
+    // ---------------------------------------------------------------- langue, jour / nuit, son
+
+    private void OnLanguageChanged() => _ = InvokeAsync(async () =>
+    {
+        if (_ready)
+        {
+            await World.SetLanguageAsync(Island.ForWorld(L.Current), Campaign.ForWorld(Game, L.Current), WorldStrings.For(L.Current));
+        }
+
+        StateHasChanged();
+    });
 
     private async Task ToggleNightAsync()
     {
         _night = !_night;
         await World.SetNightAsync(_night);
-        Toasts.Show(_night ? "La nuit tombe" : "Le jour se lève",
-            _night ? "Les lumières de l'île s'allument" : "Bonne exploration", _night ? "moon" : "sun");
+        Toasts.Show(_night ? L.T("La nuit tombe", "Night falls") : L.T("Le jour se lève", "Day breaks"),
+            _night ? L.T("Les lumières de l'île s'allument", "The island's lights come on") : L.T("Bonne exploration", "Happy exploring"),
+            _night ? "moon" : "sun");
         if (_night)
         {
             await Game.SetFlagAsync(Flags.Night);
@@ -407,18 +433,10 @@ else if (!_overlay)
 
     private async Task ToggleSoundAsync() => _soundOn = await World.ToggleSoundAsync();
 
-    /// <summary>Chaque notification a son petit son.</summary>
+    /// <summary>Chaque type de notification a son petit son.</summary>
     private void OnToast(Toast toast)
     {
-        var sound = toast.Title switch
-        {
-            "Lieu découvert" => "discover",
-            "Succès débloqué" => "achievement",
-            "Nouveau rang" => "levelup",
-            _ => null,
-        };
-
-        if (sound is not null)
+        if (toast.Kind is { } sound)
         {
             _ = InvokeAsync(() => World.PlayAsync(sound).AsTask());
         }
@@ -443,7 +461,7 @@ else if (!_overlay)
         var cts = new CancellationTokenSource();
         _tourCts = cts;
         _touring = true;
-        Toasts.Show("Visite guidée", "Clique sur l'île pour reprendre la main", "play");
+        Toasts.Show(L.T("Visite guidée", "Guided tour"), L.T("Clique sur l'île pour reprendre la main", "Click the island to take back control"), "play");
 
         try
         {
@@ -459,7 +477,7 @@ else if (!_overlay)
             await World.HomeAsync();
             if (await Game.SetFlagAsync(Flags.Tour))
             {
-                Toasts.Show("Visite terminée", $"Tu connais toute l'île · +{Rules.XpTour} XP", "map");
+                Toasts.Show(L.T("Visite terminée", "Tour complete"), L.T($"Tu connais toute l'île · +{Rules.XpTour} XP", $"You know the whole island · +{Rules.XpTour} XP"), "map");
             }
         }
         catch (TaskCanceledException)
@@ -559,6 +577,7 @@ else if (!_overlay)
         Nav.LocationChanged -= OnLocationChanged;
         Game.Changed -= OnGameChanged;
         Toasts.Shown -= OnToast;
+        L.Changed -= OnLanguageChanged;
         await World.DisposeAsync();
         _self?.Dispose();
     }

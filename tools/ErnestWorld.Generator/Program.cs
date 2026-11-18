@@ -91,7 +91,8 @@ await File.WriteAllTextAsync(Path.Combine(wwwroot, "rss.xml"), rss.Declaration +
 
 // 3. Plan du site
 XNamespace sm = "http://www.sitemaps.org/schemas/sitemap/0.9";
-var pages = new[] { "/", "/journal", "/classique/" }
+// « / » : le portfolio classique (page d'accueil) ; « /jeu/ » : la version jeu (île en 3D).
+var pages = new[] { "/", "/jeu/", "/journal" }
     .Select(path => new XElement(sm + "url", new XElement(sm + "loc", siteUrl + path)))
     .Concat(posts.Select(p => new XElement(sm + "url",
         new XElement(sm + "loc", $"{siteUrl}/journal/{p.Slug}"),

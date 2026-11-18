@@ -287,6 +287,15 @@ a.btn-enter { display: inline-block; text-decoration: none; }
 .journal-lead { margin: 1rem 0 1.4rem; font-size: 1.1rem; line-height: 1.6; color: var(--ink-soft); }
 .journal-progress { display: flex; align-items: center; gap: 0.9rem; font-size: 0.85rem; color: var(--ink-mute); }
 .journal-progress .xp { max-width: 14rem; }
+
+/* Note affichée en anglais : les articles sont écrits en français */
+.lang-note {
+  display: flex; align-items: flex-start; gap: 0.55rem; max-width: 40rem; margin: 0 0 1.2rem;
+  padding: 0.7rem 0.9rem; border: 1px solid var(--edge); border-radius: 0.8rem;
+  background: rgba(255, 255, 255, 0.04); font-size: 0.9rem; line-height: 1.5; color: var(--ink-soft);
+}
+.lang-note svg { flex-shrink: 0; margin-top: 0.15rem; color: var(--gold); }
+.article-head .lang-note { margin: 1rem 0 0; }
 .loading, .empty { color: var(--ink-mute); }
 .lost { padding: 3rem 0; }
 .lost p { color: var(--ink-soft); margin: 1rem 0 1.5rem; }
@@ -440,7 +449,7 @@ a.btn-enter { display: inline-block; text-decoration: none; }
   background: radial-gradient(60rem 40rem at 50% 120%, rgba(139, 92, 246, 0.35), transparent 60%), #0b0a12;
 }
 .boot-title { margin: 0; font-family: var(--title); font-weight: 800; font-size: clamp(2rem, 8vw, 3.6rem); line-height: 1; }
-.boot-title span { color: var(--gold); }
+.boot-title > span > span { color: var(--gold); }
 .boot-bar { width: min(16rem, 70vw); height: 0.4rem; margin: 0 auto; border-radius: 999px; background: rgba(255, 255, 255, 0.1); overflow: hidden; }
 .boot-bar span {
   display: block;

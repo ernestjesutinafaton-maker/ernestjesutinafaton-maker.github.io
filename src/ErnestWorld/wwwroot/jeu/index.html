@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  LE MONDE D'ERNEST · la version jeu du portfolio d'Ernest Afaton
+  Application C# (Blazor WebAssembly) + île en 3D (Three.js).
+  Le portfolio classique est à la racine du site ; cette page lance le jeu.
+  Code source : https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io
+-->
+<html lang="fr">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Le Monde d'Ernest · le portfolio d'Ernest Afaton, en jeu</title>
+    <base href="/" />
+
+    <meta name="description" content="La version jeu du portfolio d'Ernest Afaton : une île en 3D où chaque bâtiment est un projet, une compétence ou une étape de son parcours, avec des boss à vaincre." />
+    <meta name="theme-color" content="#0b0a12" />
+    <link rel="canonical" href="https://ernestjesutinafaton-maker.github.io/jeu/" />
+    <meta property="og:title" content="Le Monde d'Ernest · le portfolio en jeu" />
+    <meta property="og:description" content="Une île en 3D à explorer : projets, compétences, formation, boss à vaincre et le Journal d'Ernest Afaton." />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ernestjesutinafaton-maker.github.io/jeu/" />
+    <meta property="og:image" content="https://ernestjesutinafaton-maker.github.io/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Le Monde d'Ernest : une île en 3D à explorer" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="alternate" type="application/rss+xml" title="Le Journal d'Ernest" href="rss.xml" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238B5CF6'/%3E%3Cstop offset='1' stop-color='%23D946EF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-weight='700' font-size='26' fill='white'%3EEA%3C/text%3E%3C/svg%3E" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+    <link rel="preload" id="webassembly" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="css/journal.css" />
+    <link rel="stylesheet" href="css/battle.css" />
+    <link rel="modulepreload" href="lib/three/three.module.js" />
+    <script type="importmap"></script>
+
+    <!--
+      GitHub Pages ne connaît pas les adresses du jeu (/journal/...) : il renvoie 404.html,
+      qui redirige vers /jeu/?p=journal/... Ce script remet la bonne adresse avant le démarrage de Blazor.
+      Il traduit aussi l'écran de chargement si le visiteur a choisi l'anglais.
+    -->
+    <script>
+        (function () {
+            var p = new URLSearchParams(window.location.search).get("p");
+            if (p) {
+                window.history.replaceState(null, "", document.baseURI.replace(/\/$/, "") + "/" + p.replace(/^\//, ""));
+            }
+            var lang = new URLSearchParams(window.location.search).get("lang");
+            try { lang = lang || localStorage.getItem("ernest-lang"); } catch (e) { }
+            if (lang !== "fr" && lang !== "en") lang = /^fr/i.test(navigator.language || "fr") ? "fr" : "en";
+            document.documentElement.lang = lang;
+            document.documentElement.setAttribute("data-lang", lang);
+        })();
+    </script>
+    <style>
+        html[data-lang="en"] :is(.boot, #blazor-error-ui) [lang="fr"],
+        html:not([data-lang="en"]) :is(.boot, #blazor-error-ui) [lang="en"] { display: none; }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div class="boot">
+            <p class="boot-title"><span lang="fr">Le Monde<br /><span>d'Ernest</span></span><span lang="en">Ernest's<br /><span>World</span></span></p>
+            <div class="boot-bar"><span></span></div>
+            <p class="boot-text"><span lang="fr">Construction de l'île</span><span lang="en">Building the island</span></p>
+        </div>
+    </div>
+
+    <noscript>
+        <div class="boot">
+            <p>Le jeu a besoin de JavaScript. / The game needs JavaScript.</p>
+            <p><a href="/">Voir le portfolio / See the portfolio</a></p>
+        </div>
+    </noscript>
+
+    <div id="blazor-error-ui">
+        <span lang="fr">Une erreur est survenue.</span><span lang="en">Something went wrong.</span>
+        <a href="jeu/" class="reload">↻</a>
+        <span class="dismiss" role="button" aria-label="Fermer / Close">×</span>
+    </div>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+</body>
+
+</html>

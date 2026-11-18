@@ -5,14 +5,14 @@
     <title>Le Monde d'Ernest</title>
     <!--
       GitHub Pages sert cette page pour toute adresse inconnue (ex. /journal/mon-article).
-      On redirige vers l'accueil en gardant le chemin dans « ?p= » : index.html le remet
+      On ouvre le jeu (Blazor) en gardant le chemin dans « ?p= » : jeu/index.html le remet
       en place, puis Blazor affiche la bonne page.
     -->
     <script>
         (function () {
             var l = window.location;
             var path = l.pathname.replace(/^\//, "") + l.search;
-            l.replace(l.protocol + "//" + l.host + "/?p=" + encodeURIComponent(path) + l.hash);
+            l.replace(l.protocol + "//" + l.host + "/jeu/?p=" + encodeURIComponent(path) + l.hash);
         })();
     </script>
 </head>

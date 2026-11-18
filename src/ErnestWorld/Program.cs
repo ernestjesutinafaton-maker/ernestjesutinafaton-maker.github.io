@@ -12,6 +12,7 @@ builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(builder.H
 // Les services du site (dans Blazor WebAssembly, « Scoped » = un seul exemplaire par onglet)
 builder.Services.AddScoped<ToastService>();
 builder.Services.AddScoped<BrowserService>();
+builder.Services.AddScoped<LanguageService>();
 builder.Services.AddScoped<GameState>();
 builder.Services.AddScoped<BlogService>();
 builder.Services.AddScoped<WorldService>();
