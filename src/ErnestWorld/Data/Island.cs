@@ -42,7 +42,7 @@ public static class Island
         new("pigeonnier", T("Le Pigeonnier", "The Dovecote"), "Newsletter",
             "Newsletter", T("Passer au Pigeonnier", "Stop by the Dovecote"), 6, 0, typeof(Pigeonnier)),
         new("monument", T("Le Monument", "The Monument"), T("Trophées", "Trophies"),
-            T("Distinctions et passions", "Awards and passions"), T("Contempler le Monument", "Admire the Monument"), -6, 3, typeof(Monument)),
+            T("Certifications, distinctions et passions", "Certifications, awards and passions"), T("Contempler le Monument", "Admire the Monument"), -6, 3, typeof(Monument)),
         new("phare", T("Le Phare", "The Lighthouse"), "Contact",
             T("Quête finale · Contact", "Final quest · Contact"), T("Quête finale : recruter Ernest au Phare", "Final quest: recruit Ernest at the Lighthouse"), -8, 3, typeof(Phare), IsFinal: true),
     ];

@@ -134,7 +134,7 @@
 
           <ul class="stats" data-i18n-attr="aria-label=stats.label" aria-label="Quelques chiffres">
             <li><strong>16</strong><span data-i18n="stats.projects">projets</span></li>
-            <li><strong>40+</strong><span data-i18n="stats.tech">technologies</span></li>
+            <li><strong>10</strong><span data-i18n="stats.certs">certificats obtenus</span></li>
             <li><strong data-i18n="stats.iotNum">2<sup>e</sup></strong><span data-i18n="stats.iot">Workshop National IoT</span></li>
             <li><strong data-i18n="stats.nasNum">99,9 %</strong><span data-i18n="stats.nas">disponibilité du NAS en stage</span></li>
           </ul>
@@ -528,54 +528,122 @@
           </div>
         </div>
 
-        <!-- Certifications : chaque carte est indépendante, il suffit d'en copier une pour en ajouter une nouvelle. -->
+        <!-- Certifications, rangées par organisme. Pour en ajouter une : copier une carte du bon groupe,
+             puis ajouter sa traduction anglaise dans site/portfolio.js (clé data-i18n). -->
         <div class="certs-head reveal" id="certifications">
           <h3 data-i18n="certs.title">Certifications et distinctions</h3>
-          <p class="muted" data-i18n="certs.sub">Ce que j'ai obtenu ou que je prépare, en dehors des notes de cours.</p>
+          <p class="muted" data-i18n="certs.sub">10 certificats obtenus en novembre 2026, puis mes distinctions et mes diplômes.</p>
         </div>
 
-        <ul class="certs">
-          <li class="card cert reveal">
-            <div class="cert-top">
-              <span class="cert-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="6"/><path d="M8.5 14 7 22l5-3 5 3-1.5-8"/></svg></span>
-              <span class="pill" data-i18n="c.progress">En cours</span>
+        <!-- Claude Academy (Anthropic) : 6 certificats -->
+        <div class="cert-group">
+          <div class="cert-group-head reveal">
+            <span class="cert-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.4L19.5 10l-5.7 1.6L12 17l-1.8-5.4L4.5 10l5.7-1.6z"/><path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"/></svg></span>
+            <div>
+              <h4>Claude Academy · Anthropic</h4>
+              <p class="muted" data-i18n="cg.anth">6 certificats obtenus · IA, agents et outils pour développeurs · novembre 2026</p>
             </div>
-            <h4>Anthropic Academy</h4>
-            <p class="cert-org" data-i18n="c.anthOrg">Anthropic · formation en ligne</p>
-            <p data-i18n="c.anth">Formation sur l'usage et l'intégration de Claude dans des applications.</p>
-            <a class="cert-link" href="https://anthropic.skilljar.com/" target="_blank" rel="noopener"><span data-i18n="c.see">Voir le programme</span> <span aria-hidden="true">↗</span></a>
-          </li>
+          </div>
+          <ul class="certs">
+            <li class="card cert reveal">
+              <h5>Building with the Claude API</h5>
+              <p data-i18n="ca.api">Construire des applications avec l'API de Claude.</p>
+              <p class="cert-id" title="f509d07cea47082bd646ec2c51bdb075"><span data-i18n="cert.id">Identifiant</span> f509d07c…</p>
+            </li>
+            <li class="card cert reveal">
+              <h5>Claude Code in action</h5>
+              <p data-i18n="ca.code">Programmer avec Claude Code, l'assistant de code d'Anthropic.</p>
+              <p class="cert-id" title="a57e8327b39e1fba561f7a8a717d35f1"><span data-i18n="cert.id">Identifiant</span> a57e8327…</p>
+            </li>
+            <li class="card cert reveal">
+              <h5>Introduction to Model Context Protocol</h5>
+              <p data-i18n="ca.mcp">MCP : le protocole qui relie les modèles d'IA à des outils et à des données.</p>
+              <p class="cert-id" title="73c4b9b40435b125cd752c387e9a811e"><span data-i18n="cert.id">Identifiant</span> 73c4b9b4…</p>
+            </li>
+            <li class="card cert reveal">
+              <h5>Introduction to evals</h5>
+              <p data-i18n="ca.evals">Mesurer la qualité des réponses d'un modèle d'IA avec des évaluations.</p>
+              <p class="cert-id" title="416fdf41fcaf4fc57b2db18af4dca182"><span data-i18n="cert.id">Identifiant</span> 416fdf41…</p>
+            </li>
+            <li class="card cert reveal">
+              <h5>AI capabilities and limitations</h5>
+              <p data-i18n="ca.limits">Ce que les modèles d'IA savent faire, et leurs limites.</p>
+              <p class="cert-id" title="7a4ddb286cce475e18318b8997652e81"><span data-i18n="cert.id">Identifiant</span> 7a4ddb28…</p>
+            </li>
+            <li class="card cert reveal">
+              <h5>Building effective human-agent teams <span class="pill">beta</span></h5>
+              <p data-i18n="ca.teams">Faire travailler ensemble des humains et des agents IA.</p>
+              <p class="cert-id" title="233e781dd29d1552b4cd73ffd9c06519"><span data-i18n="cert.id">Identifiant</span> 233e781d…</p>
+            </li>
+          </ul>
+        </div>
 
-          <li class="card cert reveal">
-            <div class="cert-top">
-              <span class="cert-icon gold" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3"/></svg></span>
-              <span class="pill pill-award" data-i18n="c.second">2<sup>e</sup> place</span>
+        <!-- LinkedIn Learning : 4 certificats (titres officiels en français) -->
+        <div class="cert-group">
+          <div class="cert-group-head reveal">
+            <span class="cert-icon blue" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M8 10v7M8 7v.01M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/></svg></span>
+            <div>
+              <h4>LinkedIn Learning</h4>
+              <p class="muted" data-i18n="cg.li">4 certificats obtenus · programmation, gestion de projet, entrepreneuriat · novembre 2026</p>
             </div>
-            <h4 data-i18n="c.iotName">Workshop National IoT</h4>
-            <p class="cert-org" data-i18n="c.iotOrg">EPSI · workshop national, projet de groupe</p>
-            <p data-i18n="c.iot">Boîte à lecture NFC : lecture de tags sur Raspberry Pi, servomoteurs pilotés par Arduino, interface Tkinter.</p>
-          </li>
+          </div>
+          <ul class="certs">
+            <li class="card cert reveal">
+              <h5 lang="fr">Les fondements de la programmation</h5>
+              <p data-i18n="cl.prog">Les bases de la programmation, quel que soit le langage.</p>
+              <ul class="chips"><li data-i18n="cl.progS1">Programmation</li><li data-i18n="cl.progS2">Bases de la programmation</li></ul>
+            </li>
+            <li class="card cert reveal">
+              <h5 lang="fr">Examen blanc pour la préparation à la certification CAPM®</h5>
+              <p data-i18n="cl.capm">Entraînement à la certification CAPM® du PMI, en gestion de projet.</p>
+              <ul class="chips"><li data-i18n="cl.capmS1">Gestion de projet</li></ul>
+            </li>
+            <li class="card cert reveal">
+              <h5 lang="fr">Créer et lancer sa startup avec des ressources limitées</h5>
+              <p data-i18n="cl.startup">Lancer un projet d'entreprise avec peu de moyens.</p>
+              <ul class="chips"><li data-i18n="cl.startupS1">Entrepreneuriat</li><li>Bootstrapping</li></ul>
+            </li>
+            <li class="card cert reveal">
+              <h5 lang="fr">L'IA et le cerveau humain : Reprendre le contrôle de son attention</h5>
+              <p data-i18n="cl.attention">Garder la maîtrise de son attention face aux outils d'IA.</p>
+              <ul class="chips"><li data-i18n="cl.attS1">Gestion des priorités</li><li data-i18n="cl.attS2">Entraînement cérébral</li></ul>
+            </li>
+          </ul>
+        </div>
 
-          <li class="card cert reveal">
-            <div class="cert-top">
-              <span class="cert-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/></svg></span>
-              <span class="pill" data-i18n="c.session">Session 2027</span>
+        <!-- Distinctions et diplômes -->
+        <div class="cert-group">
+          <div class="cert-group-head reveal">
+            <span class="cert-icon gold" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4zM7 6H4a3 3 0 0 0 3 3M17 6h3a3 3 0 0 1-3 3"/></svg></span>
+            <div>
+              <h4 data-i18n="cg.awards">Distinctions et diplômes</h4>
+              <p class="muted" data-i18n="cg.awardsSub">Une compétition, un diplôme en préparation et le baccalauréat</p>
             </div>
-            <h4 data-i18n="c.btsName">BTS SIO option SLAM</h4>
-            <p class="cert-org" data-i18n="c.btsOrg">Diplôme d'État · certification RNCP niveau 5</p>
-            <p data-i18n="c.bts">Conception et développement d'applications, support des services informatiques, cybersécurité.</p>
-          </li>
+          </div>
+          <ul class="certs">
+            <li class="card cert reveal">
+              <div class="cert-top"><h5 data-i18n="c.iotName">Workshop National IoT</h5><span class="pill pill-award" data-i18n="c.second">2<sup>e</sup> place</span></div>
+              <p class="cert-org" data-i18n="c.iotOrg">EPSI · workshop national, projet de groupe</p>
+              <p data-i18n="c.iot">Boîte à lecture NFC : lecture de tags sur Raspberry Pi, servomoteurs pilotés par Arduino, interface Tkinter.</p>
+            </li>
+            <li class="card cert reveal">
+              <div class="cert-top"><h5 data-i18n="c.btsName">BTS SIO option SLAM</h5><span class="pill" data-i18n="c.session">Session 2027</span></div>
+              <p class="cert-org" data-i18n="c.btsOrg">Diplôme d'État · certification RNCP niveau 5</p>
+              <p data-i18n="c.bts">Conception et développement d'applications, support des services informatiques, cybersécurité.</p>
+            </li>
+            <li class="card cert reveal">
+              <div class="cert-top"><h5 data-i18n="c.bacName">Baccalauréat scientifique</h5><span class="pill pill-live" data-i18n="c.obtained">Obtenu</span></div>
+              <p class="cert-org" data-i18n="c.bacOrg">Mention Bien · 2025</p>
+              <p data-i18n="c.bac">La Prospérité, Bénin.</p>
+            </li>
+          </ul>
+        </div>
 
-          <li class="card cert reveal">
-            <div class="cert-top">
-              <span class="cert-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4"/><circle cx="12" cy="12" r="9"/></svg></span>
-              <span class="pill pill-live" data-i18n="c.obtained">Obtenu</span>
-            </div>
-            <h4 data-i18n="c.bacName">Baccalauréat scientifique</h4>
-            <p class="cert-org" data-i18n="c.bacOrg">Mention Bien · 2025</p>
-            <p data-i18n="c.bac">La Prospérité, Bénin.</p>
-          </li>
-        </ul>
+        <div class="center reveal certs-more">
+          <a class="btn btn-ghost" href="https://www.linkedin.com/in/ernest-afaton-1280a4361/details/certifications/" target="_blank" rel="noopener">
+            <span data-i18n="certs.linkedin">Voir les certificats sur LinkedIn</span> <span aria-hidden="true">↗</span>
+          </a>
+        </div>
       </div>
     </section>
 
