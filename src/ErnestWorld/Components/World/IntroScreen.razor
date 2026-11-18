@@ -1,49 +1,80 @@
+@inject LanguageService L
+
 <section class="intro" aria-labelledby="intro-title">
     <div class="intro-card">
-        <p class="intro-kicker">Portfolio · Blog · Jeu</p>
-        <h1 id="intro-title">Le Monde<br /><span>d'Ernest</span></h1>
+        <div class="lang-switch" role="group" aria-label="Langue / Language">
+            <button type="button" class="@(En ? null : "is-on")" aria-pressed="@(En ? "false" : "true")" lang="fr"
+                    @onclick="() => L.SetAsync(Lang.Fr)">Français</button>
+            <button type="button" class="@(En ? "is-on" : null)" aria-pressed="@(En ? "true" : "false")" lang="en"
+                    @onclick="() => L.SetAsync(Lang.En)">English</button>
+        </div>
+
+        <p class="intro-kicker">@T("Portfolio · Blog · Jeu", "Portfolio · Blog · Game")</p>
+        <h1 id="intro-title">
+            @if (En)
+            {
+                <text>Ernest's<br /><span>World</span></text>
+            }
+            else
+            {
+                <text>Le Monde<br /><span>d'Ernest</span></text>
+            }
+        </h1>
         <p class="intro-sub">
-            Bienvenue sur mon île. Chaque bâtiment raconte une partie de mon parcours : projets, compétences,
-            formation… et mon Journal. Explore-les tous pour débloquer la quête finale.
+            @T("Bienvenue sur mon île. Chaque bâtiment raconte une partie de mon parcours : projets, compétences, formation… et mon Journal. Explore-les tous pour débloquer la quête finale.",
+                "Welcome to my island. Each building tells part of my story: projects, skills, education… and my Journal. Explore them all to unlock the final quest.")
         </p>
 
+        <a class="intro-cv" href="./" target="_top">
+            <Icon Name="page" Size="18" />
+            <span>
+                <strong>@T("Pressé ? Voir le portfolio classique", "In a hurry? See the classic portfolio")</strong>
+                <small>@T("Tout mon parcours sur une seule page, sans jouer", "My whole background on one page, no game needed")</small>
+            </span>
+        </a>
+
         <ul class="intro-hints">
-            <li><kbd>Clic</kbd> sur un bâtiment pour le visiter</li>
-            <li><kbd>Glisser</kbd> pour tourner, <kbd>molette</kbd> pour zoomer</li>
-            <li><kbd>←</kbd> <kbd>→</kbd> pour passer d'un lieu à l'autre</li>
+            <li><kbd>@T("Clic", "Click")</kbd> @T("sur un bâtiment pour le visiter", "a building to visit it")</li>
+            <li><kbd>@T("Glisser", "Drag")</kbd> @T("pour tourner,", "to rotate,") <kbd>@T("molette", "wheel")</kbd> @T("pour zoomer", "to zoom")</li>
+            <li><kbd>←</kbd> <kbd>→</kbd> @T("pour passer d'un lieu à l'autre", "to move from place to place")</li>
         </ul>
 
         @if (Failed)
         {
             <p class="intro-error" role="alert">
-                Ton navigateur n'arrive pas à afficher la 3D. Le Journal et la version classique restent accessibles.
+                @T("Ton navigateur n'arrive pas à afficher la 3D. Le portfolio classique et le Journal restent accessibles.",
+                    "Your browser can't display 3D. The classic portfolio and the Journal are still available.")
             </p>
             <div class="intro-actions">
-                <a class="btn-enter" href="journal">Lire le Journal</a>
-                <a class="btn-secondary" href="classique/" target="_top">Version classique</a>
+                <a class="btn-enter" href="./" target="_top">@T("Voir le portfolio", "See the portfolio")</a>
+                <a class="btn-secondary" href="journal">@T("Lire le Journal", "Read the Journal")</a>
             </div>
         }
         else
         {
             @if (Returning)
             {
-                <p class="intro-welcome">Content de te revoir@(Name is { } n ? $", {n}" : "") ! Ta progression t'attend.</p>
+                <p class="intro-welcome">
+                    @T($"Content de te revoir{Suffix} ! Ta progression t'attend.", $"Good to see you again{Suffix}! Your progress is waiting for you.")
+                </p>
             }
             else
             {
                 <div class="intro-name">
-                    <label for="visitor-name">Comment t'appelles-tu, voyageur ?</label>
-                    <input id="visitor-name" maxlength="24" placeholder="Ton prénom (facultatif)" autocomplete="given-name"
+                    <label for="visitor-name">@T("Comment t'appelles-tu, voyageur ?", "What's your name, traveler?")</label>
+                    <input id="visitor-name" maxlength="24" placeholder="@T("Ton prénom (facultatif)", "Your first name (optional)")" autocomplete="given-name"
                            @bind="_name" @bind:event="oninput" @onkeydown="OnKeyDown" />
                 </div>
             }
 
             <button type="button" class="btn-enter" disabled="@(!Ready)" @onclick="EnterAsync">
-                @(Ready ? (Returning ? "Reprendre l'exploration" : "Entrer dans le monde") : "Chargement du monde…")
+                @(Ready
+                    ? (Returning ? T("Reprendre l'exploration", "Resume exploring") : T("Entrer dans le monde", "Enter the world"))
+                    : T("Chargement du monde…", "Loading the world…"))
             </button>
 
             <p class="intro-alt">
-                <a href="journal">Lire directement le Journal</a> · <a href="classique/" target="_top">Version classique</a>
+                <a href="journal">@T("Lire directement le Journal", "Go straight to the Journal")</a> · <a href="./" target="_top">@T("Portfolio classique", "Classic portfolio")</a>
             </p>
         }
     </div>
@@ -57,6 +88,8 @@
     [Parameter] public EventCallback<string?> OnEnter { get; set; }
 
     private string? _name;
+
+    private string Suffix => Name is { } n ? $", {n}" : string.Empty;
 
     private Task EnterAsync() => Ready ? OnEnter.InvokeAsync(_name) : Task.CompletedTask;
 

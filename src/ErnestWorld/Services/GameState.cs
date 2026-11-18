@@ -21,7 +21,7 @@ internal partial class SaveJsonContext : JsonSerializerContext;
 /// La progression du visiteur : lieux découverts, articles lus, boss vaincus, succès, XP et rang.
 /// Tout reste dans son navigateur (localStorage) : rien n'est envoyé sur un serveur.
 /// </summary>
-public sealed class GameState(BrowserService browser, ToastService toasts)
+public sealed class GameState(BrowserService browser, ToastService toasts, LanguageService lang)
 {
     private const string StorageKey = "ernest-world-v1";
 
@@ -164,7 +164,7 @@ public sealed class GameState(BrowserService browser, ToastService toasts)
         var rank = Level;
         if (rank.Number > rankBefore)
         {
-            toasts.Show("Nouveau rang", $"Rang {rank.Number} · {rank.Title}", "crown");
+            toasts.Show(lang.T("Nouveau rang", "New rank"), $"{lang.T("Rang", "Rank")} {rank.Number} · {lang.T(rank.Title)}", "crown", "levelup");
         }
 
         await SaveAsync();
@@ -179,7 +179,7 @@ public sealed class GameState(BrowserService browser, ToastService toasts)
             if (_achievements.Add(id))
             {
                 var achievement = Rules.Achievements.First(a => a.Id == id);
-                toasts.Show("Succès débloqué", $"{achievement.Name} · +{Rules.XpPerAchievement} XP", achievement.Icon);
+                toasts.Show(lang.T("Succès débloqué", "Achievement unlocked"), $"{lang.T(achievement.Name)} · +{Rules.XpPerAchievement} XP", achievement.Icon, "achievement");
             }
         }
     }

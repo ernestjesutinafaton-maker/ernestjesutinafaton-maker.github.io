@@ -99,7 +99,7 @@ public class BattleTests
         Assert.True(second.PhaseChanged);
         Assert.Equal(2, battle.Phase);
         battle.Next();
-        Assert.Equal("Q-rage", battle.Current.Source.Prompt);
+        Assert.Equal("Q-rage", battle.Current.Source.Prompt.Fr);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class BattleTests
 
         for (var i = 0; i < 4; i++)
         {
-            seen.Add(battle.Current.Source.Prompt);
+            seen.Add(battle.Current.Source.Prompt.Fr);
             battle.Answer(battle.Current.CorrectIndex);
             battle.Next();
         }
@@ -153,11 +153,31 @@ public class BestiaryTests
 
         foreach (var q in boss.Questions)
         {
-            Assert.False(string.IsNullOrWhiteSpace(q.Prompt));
-            Assert.False(string.IsNullOrWhiteSpace(q.Explanation));
             Assert.Equal(3, q.Wrong.Count);
             Assert.DoesNotContain(q.Answer, q.Wrong);
             Assert.Equal(q.Wrong.Count, q.Wrong.Distinct().Count());
+
+            // Chaque texte existe dans les deux langues, et les choix restent distincts en anglais aussi
+            foreach (var text in new[] { q.Prompt, q.Answer, q.Explanation }.Concat(q.Wrong))
+            {
+                Assert.False(string.IsNullOrWhiteSpace(text.Fr), $"{boss.Id} : texte français manquant");
+                Assert.False(string.IsNullOrWhiteSpace(text.En), $"{boss.Id} : texte anglais manquant ({text.Fr})");
+            }
+
+            Assert.Equal(4, q.Wrong.Append(q.Answer).Select(t => t.En).Distinct().Count());
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(BossIds))]
+    public void Chaque_boss_est_traduit(string id)
+    {
+        var boss = Bestiary.Find(id)!;
+
+        foreach (var text in new[] { boss.Name, boss.Title, boss.Lore, boss.AttackLine, boss.DefeatLine })
+        {
+            Assert.False(string.IsNullOrWhiteSpace(text.En));
+            Assert.NotEqual(text.Fr, text.En);
         }
     }
 

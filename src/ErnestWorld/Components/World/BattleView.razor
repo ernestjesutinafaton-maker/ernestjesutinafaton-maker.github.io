@@ -9,18 +9,18 @@
     <header class="boss-plate">
         <span class="boss-emblem"><Icon Name="@Campaign.IconOf(Boss.Id)" Size="22" /></span>
         <div class="boss-meta">
-            <p class="boss-title">@Boss.Title@(_rematch ? " · revanche" : "")</p>
-            <h2>@Boss.Name</h2>
-            <div class="hp" role="progressbar" aria-label="Points de vie du boss"
+            <p class="boss-title">@T(Boss.Title)@(_rematch ? T(" · revanche", " · rematch") : "")</p>
+            <h2>@T(Boss.Name)</h2>
+            <div class="hp" role="progressbar" aria-label="@T("Points de vie du boss", "Boss health")"
                  aria-valuemin="0" aria-valuemax="@Boss.MaxHp" aria-valuenow="@Hp">
                 <span class="hp-ghost" style="width: @Percent(_ghostHp)%"></span>
                 <span class="hp-fill" style="width: @Percent(Hp)%"></span>
-                <span class="hp-text">@Hp / @Boss.MaxHp PV</span>
+                <span class="hp-text">@Hp / @Boss.MaxHp @T("PV", "HP")</span>
             </div>
         </div>
         @if (_battle?.Phase == 2)
         {
-            <span class="rage-badge"><Icon Name="flame" Size="14" /> En rage</span>
+            <span class="rage-badge"><Icon Name="flame" Size="14" /> @T("En rage", "Enraged")</span>
         }
     </header>
 
@@ -33,20 +33,20 @@
         @switch (_stage)
         {
             case Stage.Intro:
-                <p class="battle-kicker">Niveau @Boss.Level · combat de boss</p>
-                <p class="battle-lore">@Boss.Lore</p>
+                <p class="battle-kicker">@T($"Niveau {Boss.Level} · combat de boss", $"Level {Boss.Level} · boss battle")</p>
+                <p class="battle-lore">@T(Boss.Lore)</p>
                 <ul class="battle-rules">
-                    <li><Icon Name="heart" Size="16" /> <strong>@_stats.Hearts cœurs</strong> grâce à ton rang (@Game.Level.Title)</li>
-                    <li><Icon Name="spark" Size="16" /> <strong>@_stats.Hints indices</strong> : chacun retire deux mauvaises réponses</li>
-                    <li><Icon Name="bolt" Size="16" /> Trois bonnes réponses d'affilée : <strong>coup critique</strong> (dégâts ×2)</li>
+                    <li><Icon Name="heart" Size="16" /> <strong>@_stats.Hearts @T("cœurs", "hearts")</strong> @T("grâce à ton rang", "thanks to your rank") (@T(Game.Level.Title))</li>
+                    <li><Icon Name="spark" Size="16" /> <strong>@_stats.Hints @T("indices", "hints")</strong>@T(" : chacun retire deux mauvaises réponses", ": each one removes two wrong answers")</li>
+                    <li><Icon Name="bolt" Size="16" /> @T("Trois bonnes réponses d'affilée :", "Three right answers in a row:") <strong>@T("coup critique", "critical hit")</strong> @T("(dégâts ×2)", "(×2 damage)")</li>
                 </ul>
                 @if (_rematch)
                 {
-                    <p class="small-print">Revanche : pas d'XP cette fois, juste la gloire.</p>
+                    <p class="small-print">@T("Revanche : pas d'XP cette fois, juste la gloire.", "Rematch: no XP this time, just glory.")</p>
                 }
                 <div class="battle-actions">
-                    <button type="button" class="btn-fight" @onclick="FightAsync"><Icon Name="sword" Size="18" /> Combattre !</button>
-                    <button type="button" class="link-btn" @onclick="ExitAsync">Plus tard</button>
+                    <button type="button" class="btn-fight" @onclick="FightAsync"><Icon Name="sword" Size="18" /> @T("Combattre !", "Fight!")</button>
+                    <button type="button" class="link-btn" @onclick="ExitAsync">@T("Plus tard", "Later")</button>
                 </div>
                 break;
 
@@ -55,7 +55,7 @@
                 var feedback = _stage == Stage.Feedback && _last is not null;
 
                 <div class="battle-status">
-                    <div class="hearts" aria-label="@_battle.Hearts cœurs sur @_battle.MaxHearts">
+                    <div class="hearts" aria-label="@T($"{_battle.Hearts} cœurs sur {_battle.MaxHearts}", $"{_battle.Hearts} hearts out of {_battle.MaxHearts}")">
                         @for (var i = 0; i < _battle.MaxHearts; i++)
                         {
                             <span class="heart @(i < _battle.Hearts ? "is-full" : "is-empty")"><Icon Name="heart" Size="20" /></span>
@@ -68,7 +68,7 @@
                     <span class="q-count">Question @_battle.QuestionNumber</span>
                 </div>
 
-                <h3 class="question">@asked.Source.Prompt</h3>
+                <h3 class="question">@T(asked.Source.Prompt)</h3>
                 @if (asked.Source.Code is { } snippet)
                 {
                     <pre class="question-code"><code>@snippet</code></pre>
@@ -85,7 +85,7 @@
                         <button type="button" class="choice @(removed ? "is-removed" : null) @state"
                                 disabled="@(removed || feedback)" @onclick="() => AnswerAsync(index)">
                             <span class="choice-key">@((char)('A' + index))</span>
-                            <span class="choice-text">@asked.Choices[index]</span>
+                            <span class="choice-text">@T(asked.Choices[index])</span>
                         </button>
                     }
                 </div>
@@ -94,71 +94,71 @@
                 {
                     <div class="verdict @(_last!.Correct ? "is-good" : "is-bad")">
                         <p class="verdict-title">@VerdictTitle</p>
-                        <p>@_last.Explanation</p>
+                        <p>@T(_last.Explanation)</p>
                         @if (!_last.Correct && asked.Source.HintPlace is { } hint && Island.Find(hint) is { } place)
                         {
-                            <p class="small-print">La réponse se trouve aussi dans un lieu de l'île : <strong>@place.Name</strong>.</p>
+                            <p class="small-print">@T("La réponse se trouve aussi dans un lieu de l'île :", "You can also find the answer somewhere on the island:") <strong>@T(place.Name)</strong>.</p>
                         }
                     </div>
                     <div class="battle-actions">
                         <button type="button" class="btn-fight" @onclick="ContinueAsync">@ContinueLabel</button>
-                        <span class="key-hint">ou touche Entrée</span>
+                        <span class="key-hint">@T("ou touche Entrée", "or press Enter")</span>
                     </div>
                 }
                 else
                 {
                     <div class="battle-actions is-small">
                         <button type="button" class="link-btn" @onclick="UseHintAsync" disabled="@(_battle.Hints == 0)">
-                            <Icon Name="spark" Size="16" /> Indice (@_battle.Hints)
+                            <Icon Name="spark" Size="16" /> @T("Indice", "Hint") (@_battle.Hints)
                         </button>
-                        <button type="button" class="link-btn danger" @onclick="ExitAsync">Fuir</button>
-                        <span class="key-hint">Touches 1 à 4 pour répondre</span>
+                        <button type="button" class="link-btn danger" @onclick="ExitAsync">@T("Fuir", "Flee")</button>
+                        <span class="key-hint">@T("Touches 1 à 4 pour répondre", "Keys 1 to 4 to answer")</span>
                     </div>
                 }
                 break;
 
             case Stage.Victory when _battle is not null:
                 <div class="result is-victory">
-                    <p class="result-kicker">Victoire</p>
-                    <h3>@Boss.Name est vaincu !</h3>
-                    <p class="result-line">@Boss.DefeatLine</p>
+                    <p class="result-kicker">@T("Victoire", "Victory")</p>
+                    <h3>@T($"{T(Boss.Name)} est vaincu !", $"{T(Boss.Name)} is defeated!")</h3>
+                    <p class="result-line">@T(Boss.DefeatLine)</p>
                     <ul class="rewards">
                         @if (_firstWin)
                         {
                             <li><Icon Name="spark" Size="16" /> +@Boss.XpReward XP</li>
-                            <li><Icon Name="trophy" Size="16" /> Succès : @Rules.Achievements.First(a => a.Id == Boss.AchievementId).Name</li>
+                            <li><Icon Name="trophy" Size="16" /> @T("Succès :", "Achievement:") @T(Rules.Achievements.First(a => a.Id == Boss.AchievementId).Name)</li>
                         }
                         @if (_battle.IsFlawless)
                         {
-                            <li><Icon Name="shield" Size="16" /> Sans une égratignure !</li>
+                            <li><Icon Name="shield" Size="16" /> @T("Sans une égratignure !", "Not a scratch!")</li>
                         }
-                        <li><Icon Name="bolt" Size="16" /> Meilleur combo : ×@_battle.BestCombo</li>
+                        <li><Icon Name="bolt" Size="16" /> @T("Meilleur combo :", "Best combo:") ×@_battle.BestCombo</li>
                     </ul>
                     @if (_firstWin && _next is not null)
                     {
-                        <p class="unlock">Niveau @_next.Number débloqué : <strong>@_next.Name</strong></p>
+                        <p class="unlock">@T($"Niveau {_next.Number} débloqué :", $"Level {_next.Number} unlocked:") <strong>@T(_next.Name)</strong></p>
                     }
                     else if (_firstWin)
                     {
-                        <p class="unlock">L'île est sauvée ! Une dernière quête t'attend au <strong>Phare</strong>.</p>
+                        <p class="unlock">@T("L'île est sauvée ! Une dernière quête t'attend au", "The island is saved! One last quest awaits you at the") <strong>@T("Phare", "Lighthouse")</strong>.</p>
                     }
                     <div class="battle-actions">
-                        <button type="button" class="btn-fight" @onclick="ExitAsync">Retour sur l'île</button>
+                        <button type="button" class="btn-fight" @onclick="ExitAsync">@T("Retour sur l'île", "Back to the island")</button>
                     </div>
                 </div>
                 break;
 
             case Stage.Defeat:
                 <div class="result is-defeat">
-                    <p class="result-kicker">Défaite</p>
-                    <h3>@Boss.Name garde son trône…</h3>
+                    <p class="result-kicker">@T("Défaite", "Defeat")</p>
+                    <h3>@T($"{T(Boss.Name)} garde son trône…", $"{T(Boss.Name)} keeps its throne…")</h3>
                     <p>
-                        Les réponses se cachent dans les bâtiments de l'île et dans le Journal.
-                        Utilise tes indices, et monte en rang pour partir avec plus de cœurs.
+                        @T("Les réponses se cachent dans les bâtiments de l'île et dans le Journal. Utilise tes indices, et monte en rang pour partir avec plus de cœurs.",
+                            "The answers are hidden in the island's buildings and in the Journal. Use your hints, and rank up to start with more hearts.")
                     </p>
                     <div class="battle-actions">
-                        <button type="button" class="btn-fight" @onclick="FightAsync"><Icon Name="sword" Size="18" /> Réessayer</button>
-                        <button type="button" class="link-btn" @onclick="ExitAsync">Retour sur l'île</button>
+                        <button type="button" class="btn-fight" @onclick="FightAsync"><Icon Name="sword" Size="18" /> @T("Réessayer", "Try again")</button>
+                        <button type="button" class="link-btn" @onclick="ExitAsync">@T("Retour sur l'île", "Back to the island")</button>
                     </div>
                 </div>
                 break;
@@ -196,17 +196,17 @@
 
     private string VerdictTitle => _last switch
     {
-        { Correct: true, Critical: true } => $"Coup critique ! −{_last.Damage} PV",
-        { Correct: true, Combo: >= 2 } => $"Combo ×{_last.Combo} ! −{_last.Damage} PV",
-        { Correct: true } => $"Touché ! −{_last.Damage} PV",
-        _ => $"{Boss.AttackLine} −1 cœur",
+        { Correct: true, Critical: true } => T($"Coup critique ! −{_last.Damage} PV", $"Critical hit! −{_last.Damage} HP"),
+        { Correct: true, Combo: >= 2 } => T($"Combo ×{_last.Combo} ! −{_last.Damage} PV", $"Combo ×{_last.Combo}! −{_last.Damage} HP"),
+        { Correct: true } => T($"Touché ! −{_last.Damage} PV", $"Hit! −{_last.Damage} HP"),
+        _ => $"{T(Boss.AttackLine)} {T("−1 cœur", "−1 heart")}",
     };
 
     private string ContinueLabel => _last?.Status switch
     {
-        BattleStatus.Victory => "Achever le boss !",
-        BattleStatus.Defeat => "Voir le résultat",
-        _ => "Question suivante",
+        BattleStatus.Victory => T("Achever le boss !", "Finish the boss!"),
+        BattleStatus.Defeat => T("Voir le résultat", "See the result"),
+        _ => T("Question suivante", "Next question"),
     };
 
     protected override async Task OnInitializedAsync()
@@ -258,7 +258,7 @@
 
         if (_last.Correct)
         {
-            ShowPop(_last.Critical ? $"−{_last.Damage} CRITIQUE !" : $"−{_last.Damage}", _last.Critical, hurt: false);
+            ShowPop(_last.Critical ? T($"−{_last.Damage} CRITIQUE !", $"−{_last.Damage} CRITICAL!") : $"−{_last.Damage}", _last.Critical, hurt: false);
             Flash(_last.Critical ? "fx-crit" : "fx-hit");
             await World.BossHitAsync(BossId, _last.Critical, _battle.HpRatio);
             await World.PlayAsync(_last.Critical ? "crit" : "hit");
@@ -271,12 +271,12 @@
             {
                 await World.BossEnrageAsync(BossId);
                 await World.PlayAsync("roar");
-                Toasts.Show("Le boss entre en rage !", "Ses questions deviennent plus difficiles", "flame");
+                Toasts.Show(T("Le boss entre en rage !", "The boss is enraged!"), T("Ses questions deviennent plus difficiles", "Its questions get harder"), "flame");
             }
         }
         else
         {
-            ShowPop("−1 cœur", critical: false, hurt: true);
+            ShowPop(T("−1 cœur", "−1 heart"), critical: false, hurt: true);
             Flash("fx-hurt");
             await World.BossAttackAsync(BossId);
             await World.PlayAsync("hurt");
@@ -321,7 +321,7 @@
         _firstWin = await Game.DefeatBossAsync(BossId, _battle!.IsFlawless);
         if (_firstWin)
         {
-            Toasts.Show("Boss vaincu", $"{Boss.Name} · +{Boss.XpReward} XP", Campaign.IconOf(BossId));
+            Toasts.Show(T("Boss vaincu", "Boss defeated"), $"{T(Boss.Name)} · +{Boss.XpReward} XP", Campaign.IconOf(BossId));
         }
     }
 

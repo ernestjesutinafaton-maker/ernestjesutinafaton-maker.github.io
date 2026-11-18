@@ -5,10 +5,10 @@
     <div class="dialog is-wide" role="dialog" aria-modal="true" aria-labelledby="levels-title" @onclick:stopPropagation="true">
         <header class="panel-head">
             <div>
-                <p class="panel-kicker">Campagne · @Game.DefeatedCount / @Campaign.Levels.Count boss vaincus</p>
-                <h2 id="levels-title">Carte des niveaux</h2>
+                <p class="panel-kicker">@T("Campagne", "Campaign") · @Game.DefeatedCount / @Campaign.Levels.Count @T("boss vaincus", "bosses defeated")</p>
+                <h2 id="levels-title">@T("Carte des niveaux", "Level map")</h2>
             </div>
-            <button type="button" class="panel-close" @onclick="OnClose" aria-label="Fermer">
+            <button type="button" class="panel-close" @onclick="OnClose" aria-label="@T("Fermer", "Close")">
                 <Icon Name="close" />
             </button>
         </header>
@@ -36,10 +36,10 @@
 
                         <div class="level-main">
                             <h3>
-                                Niveau @level.Number · @level.Name
+                                @T("Niveau", "Level") @level.Number · @T(level.Name)
                                 <span class="tag @StateClass(state)">@StateLabel(state)</span>
                             </h3>
-                            <p>@level.Story</p>
+                            <p>@T(level.Story)</p>
 
                             @if (state != LevelState.Locked)
                             {
@@ -51,16 +51,16 @@
                                             @if (objective.PlaceId is { } placeId && !done)
                                             {
                                                 <button type="button" @onclick="() => OnGoto.InvokeAsync(placeId)">
-                                                    <Icon Name="flag" Size="14" /> @objective.Label
+                                                    <Icon Name="flag" Size="14" /> @T(objective.Label)
                                                 </button>
                                             }
                                             else if (objective.Href is { } href && !done)
                                             {
-                                                <a href="@href"><Icon Name="flag" Size="14" /> @objective.Label</a>
+                                                <a href="@href"><Icon Name="flag" Size="14" /> @T(objective.Label)</a>
                                             }
                                             else
                                             {
-                                                <span><Icon Name="@(done ? "check" : "flag")" Size="14" /> @objective.Label</span>
+                                                <span><Icon Name="@(done ? "check" : "flag")" Size="14" /> @T(objective.Label)</span>
                                             }
                                         </li>
                                     }
@@ -70,24 +70,24 @@
                             <div class="level-boss">
                                 <span class="boss-row-icon"><Icon Name="@Campaign.IconOf(level.BossId)" Size="18" /></span>
                                 <div>
-                                    <p class="boss-row-name">@level.Boss.Name</p>
-                                    <p class="small-print">@level.Boss.MaxHp PV · +@level.Boss.XpReward XP@(level.Boss.TwoPhases ? " · deux phases" : "")</p>
+                                    <p class="boss-row-name">@T(level.Boss.Name)</p>
+                                    <p class="small-print">@level.Boss.MaxHp @T("PV", "HP") · +@level.Boss.XpReward XP@(level.Boss.TwoPhases ? T(" · deux phases", " · two phases") : "")</p>
                                 </div>
                                 @switch (state)
                                 {
                                     case LevelState.BossReady:
                                         <button type="button" class="btn-boss" @onclick="() => OnFight.InvokeAsync(level.BossId)">
-                                            <Icon Name="sword" Size="16" /> Affronter
+                                            <Icon Name="sword" Size="16" /> @T("Affronter", "Fight")
                                         </button>
                                         break;
                                     case LevelState.Completed:
-                                        <button type="button" class="link-btn" @onclick="() => OnFight.InvokeAsync(level.BossId)">Revanche</button>
+                                        <button type="button" class="link-btn" @onclick="() => OnFight.InvokeAsync(level.BossId)">@T("Revanche", "Rematch")</button>
                                         break;
                                     case LevelState.InProgress:
-                                        <span class="boss-row-lock">Endormi</span>
+                                        <span class="boss-row-lock">@T("Endormi", "Asleep")</span>
                                         break;
                                     default:
-                                        <span class="boss-row-lock">Verrouillé</span>
+                                        <span class="boss-row-lock">@T("Verrouillé", "Locked")</span>
                                         break;
                                 }
                             </div>
@@ -104,12 +104,12 @@
     [Parameter] public EventCallback<string> OnFight { get; set; }
     [Parameter] public EventCallback<string> OnGoto { get; set; }
 
-    private static string StateLabel(LevelState state) => state switch
+    private string StateLabel(LevelState state) => state switch
     {
-        LevelState.Completed => "Terminé",
-        LevelState.BossReady => "Boss réveillé",
-        LevelState.InProgress => "En cours",
-        _ => "Verrouillé",
+        LevelState.Completed => T("Terminé", "Completed"),
+        LevelState.BossReady => T("Boss réveillé", "Boss awake"),
+        LevelState.InProgress => T("En cours", "In progress"),
+        _ => T("Verrouillé", "Locked"),
     };
 
     private static string StateClass(LevelState state) => state switch

@@ -8,9 +8,9 @@
     var done = level?.Objectives.Count(o => o.IsDone(Game)) ?? 0;
 }
 
-<aside class="quests @(_collapsed ? "is-collapsed" : null)" aria-label="Niveau en cours">
+<aside class="quests @(_collapsed ? "is-collapsed" : null)" aria-label="@T("Niveau en cours", "Current level")">
     <button type="button" class="quests-toggle" @onclick="() => _collapsed = !_collapsed" aria-expanded="@(_collapsed ? "false" : "true")">
-        <span>@(level is null ? "Campagne terminée" : $"Niveau {level.Number} · {level.Name}")</span>
+        <span>@(level is null ? T("Campagne terminée", "Campaign complete") : $"{T("Niveau", "Level")} {level.Number} · {T(level.Name)}")</span>
         <span class="quests-count">@(level is null ? $"{Campaign.Levels.Count}/{Campaign.Levels.Count}" : $"{done}/{level.Objectives.Count}")</span>
     </button>
 
@@ -19,19 +19,19 @@
         <div class="quests-body">
             @if (level is null)
             {
-                <p class="quests-story">Les cinq gardiens sont tombés. Il ne reste qu'une quête…</p>
+                <p class="quests-story">@T("Les cinq gardiens sont tombés. Il ne reste qu'une quête…", "The five guardians have fallen. Only one quest remains…")</p>
                 <ol class="quests-list">
                     <li>
-                        <button type="button" class="quest is-final @(Game.HasVisited("phare") ? "is-done" : null)" @onclick="() => World.OpenPlaceAsync(Ph)">
+                        <button type="button" class="quest is-final @(Game.HasVisited(Ph) ? "is-done" : null)" @onclick="() => World.OpenPlaceAsync(Ph)">
                             <span class="quest-check">@if (Game.HasVisited(Ph)) { <Icon Name="check" Size="12" /> }</span>
-                            <span class="quest-text">Recruter Ernest au Phare</span>
+                            <span class="quest-text">@T("Recruter Ernest au Phare", "Recruit Ernest at the Lighthouse")</span>
                         </button>
                     </li>
                 </ol>
             }
             else
             {
-                <p class="quests-story">@level.Story</p>
+                <p class="quests-story">@T(level.Story)</p>
                 <ol class="quests-list">
                     @foreach (var objective in level.Objectives)
                     {
@@ -41,7 +41,7 @@
                             {
                                 <a class="quest @(isDone ? "is-done" : null)" href="@href">
                                     <span class="quest-check">@if (isDone) { <Icon Name="check" Size="12" /> }</span>
-                                    <span class="quest-text">@objective.Label</span>
+                                    <span class="quest-text">@T(objective.Label)</span>
                                 </a>
                             }
                             else
@@ -49,7 +49,7 @@
                                 <button type="button" class="quest @(isDone ? "is-done" : null) @(objective.PlaceId == ActiveId ? "is-active" : null)"
                                         @onclick="() => World.OpenPlaceAsync(objective.PlaceId!)">
                                     <span class="quest-check">@if (isDone) { <Icon Name="check" Size="12" /> }</span>
-                                    <span class="quest-text">@objective.Label</span>
+                                    <span class="quest-text">@T(objective.Label)</span>
                                 </button>
                             }
                         </li>
@@ -59,24 +59,24 @@
                 <div class="boss-row @(state == LevelState.BossReady ? "is-ready" : null)">
                     <span class="boss-row-icon"><Icon Name="@Campaign.IconOf(level.BossId)" Size="18" /></span>
                     <div>
-                        <p class="boss-row-label">Boss du niveau</p>
-                        <p class="boss-row-name">@level.Boss.Name</p>
+                        <p class="boss-row-label">@T("Boss du niveau", "Level boss")</p>
+                        <p class="boss-row-name">@T(level.Boss.Name)</p>
                     </div>
                     @if (state == LevelState.BossReady)
                     {
                         <button type="button" class="btn-boss" @onclick="() => World.StartBattleAsync(level.BossId)">
-                            <Icon Name="sword" Size="15" /> Affronter
+                            <Icon Name="sword" Size="15" /> @T("Affronter", "Fight")
                         </button>
                     }
                     else
                     {
-                        <span class="boss-row-lock"><Icon Name="lock" Size="12" /> Endormi</span>
+                        <span class="boss-row-lock"><Icon Name="lock" Size="12" /> @T("Endormi", "Asleep")</span>
                     }
                 </div>
             }
 
             <button type="button" class="quests-map" @onclick="World.OpenLevels">
-                <Icon Name="map" Size="15" /> Carte des niveaux
+                <Icon Name="map" Size="15" /> @T("Carte des niveaux", "Level map")
             </button>
         </div>
     }

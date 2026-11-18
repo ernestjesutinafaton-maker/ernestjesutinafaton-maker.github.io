@@ -1,22 +1,22 @@
 @inject GameState Game
 
-<a class="post-card @(Game.HasRead(Post.Slug) ? "is-read" : null)" href="journal/@Post.Slug">
+<a class="post-card @(Game.HasRead(Post.Slug) ? "is-read" : null)" href="journal/@Post.Slug" hreflang="fr">
     <div class="post-card-top">
-        <span class="post-date">@FrenchDate.Format(Post.Date)</span>
+        <span class="post-date">@Dates.Format(Post.Date, Language)</span>
         @if (Game.HasRead(Post.Slug))
         {
-            <span class="tag tag-live"><Icon Name="check" Size="12" /> Lu</span>
+            <span class="tag tag-live"><Icon Name="check" Size="12" /> @T("Lu", "Read")</span>
         }
         else
         {
             <span class="tag tag-gold">+@Rules.XpPerPost XP</span>
         }
     </div>
-    <h3>@Post.Title</h3>
-    <p>@Post.Summary</p>
+    <h3 lang="fr">@Post.Title</h3>
+    <p lang="fr">@Post.Summary</p>
     <div class="post-card-foot">
         <span class="post-tags">@string.Join(" · ", Post.Tags)</span>
-        <span>@Post.ReadingMinutes min de lecture</span>
+        <span>@T($"{Post.ReadingMinutes} min de lecture", $"{Post.ReadingMinutes} min read")@(En ? " · in French" : null)</span>
     </div>
 </a>
 

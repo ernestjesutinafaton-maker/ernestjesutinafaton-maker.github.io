@@ -2,17 +2,22 @@
 
 [![Déploiement](https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/actions/workflows/deploy.yml)
 
-Portfolio et blog d'Ernest Afaton, sous la forme d'une île en 3D à explorer.
-Chaque bâtiment est une section : projets, compétences, formation, le Journal (blog) et la newsletter.
-Le visiteur gagne de l'XP, monte de rang, affronte des boss et débloque des succès en explorant et en lisant.
+Portfolio et blog d'Ernest Afaton, en deux versions :
 
-**Site :** https://ernestjesutinafaton-maker.github.io
+- **le portfolio classique**, en page d'accueil : tout le parcours sur une seule page (projets, compétences, formation, certifications) ;
+- **la version jeu**, sous `/jeu/` : une île en 3D où chaque bâtiment est une section. Le visiteur gagne de l'XP,
+  monte de rang, affronte des boss et débloque des succès en explorant et en lisant le Journal (blog).
+
+Les deux versions existent en français et en anglais (bouton FR / EN, ou `?lang=en` dans l'adresse).
+
+**Portfolio :** https://ernestjesutinafaton-maker.github.io · **Jeu :** https://ernestjesutinafaton-maker.github.io/jeu/
 
 ![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)
 
-> **In English:** my portfolio and blog, as a 3D game. Explore an island where every building is a part of my journey,
-> fight 5 bosses in turn-based battles where questions about my projects are your attacks, and read my blog.
-> Built with **C# (Blazor WebAssembly, .NET 10)**, **Three.js**, xUnit and GitHub Actions. **[Play it](https://ernestjesutinafaton-maker.github.io)**
+> **In English:** my portfolio and blog. The home page is a classic one-page resume; the game version is a 3D island
+> where every building is a part of my journey, with 5 bosses to fight in turn-based battles where questions about my
+> projects are your attacks. Both are available in English. Built with **C# (Blazor WebAssembly, .NET 10)**, **Three.js**,
+> xUnit and GitHub Actions. **[Portfolio](https://ernestjesutinafaton-maker.github.io/?lang=en)** · **[Play it](https://ernestjesutinafaton-maker.github.io/jeu/?lang=en)**
 >
 > ⭐ Si le projet te plaît, une étoile sur GitHub m'aide beaucoup. If you like it, a star really helps!
 
@@ -20,7 +25,8 @@ Le visiteur gagne de l'XP, monte de rang, affronte des boss et débloque des suc
 
 | Partie | Technologie |
 |---|---|
-| Application | **C#** avec **Blazor WebAssembly** (.NET 10) : le C# s'exécute dans le navigateur |
+| Page d'accueil | HTML, CSS et JavaScript, sans framework : s'affiche tout de suite, imprimable |
+| Version jeu | **C#** avec **Blazor WebAssembly** (.NET 10) : le C# s'exécute dans le navigateur |
 | Règles du jeu | Bibliothèque C# testée : moteur de combat, boss et questions |
 | Île en 3D | Three.js (WebGL), pilotée depuis le C# : ombres, bloom, contours, particules, ciel jour/nuit |
 | Sons | Web Audio API : tous les sons sont synthétisés, aucun fichier audio |
@@ -32,7 +38,10 @@ Le visiteur gagne de l'XP, monte de rang, affronte des boss et débloque des suc
 ## Organisation du dépôt
 
 ```
-src/ErnestWorld/              Le site (Blazor WebAssembly)
+src/ErnestWorld/              Le site
+  wwwroot/index.html          Page d'accueil : le portfolio classique (texte français dans la page)
+  wwwroot/site/               Style et script de la page d'accueil (traduction anglaise dans portfolio.js)
+  wwwroot/jeu/index.html      Page qui lance la version jeu (Blazor WebAssembly)
   Components/World/           L'île : interface de jeu, quêtes, succès, visite guidée
   Components/Places/          Le contenu de chaque bâtiment (un fichier par lieu)
   Components/Blog/            Cartes d'articles
@@ -42,7 +51,8 @@ src/ErnestWorld/              Le site (Blazor WebAssembly)
   Services/                   Progression, blog, newsletter, pont vers la 3D
   wwwroot/js/world.js         Le moteur 3D (Three.js)
   wwwroot/posts/              Les articles du Journal (Markdown)
-  wwwroot/classique/          Version classique du portfolio, sans 3D
+  wwwroot/classique/          Redirige les anciens liens vers la page d'accueil
+  Services/LanguageService.cs Langue de la version jeu (français ou anglais)
 src/ErnestWorld.Content/      Lecture des articles (en-tête, temps de lecture), partagée
 src/ErnestWorld.Game/         Règles du jeu : moteur de combat (Battle), boss et questions (Bestiary)
 tools/ErnestWorld.Generator/  Générateur du Journal
@@ -60,11 +70,18 @@ tests/                        Tests unitaires (articles, combats, questions)
 - **Rangs** : l'XP fait monter de rang, et un rang élevé donne plus de cœurs et d'indices au combat.
 - **Succès**, visite guidée, mode nuit, mini-carte, sons et ambiance (coupables d'un bouton).
 
-Liens directs : `/?lieu=forge` ouvre un lieu, `/?combat=golem` lance un combat (si le boss est réveillé).
+Liens directs : `/jeu/?lieu=forge` ouvre un lieu, `/jeu/?combat=golem` lance un combat (si le boss est réveillé),
+`?lang=en` affiche le site en anglais.
+
+### Traductions
+
+Chaque texte de la version jeu existe en deux langues. Dans les composants, `@T("texte", "text")` choisit la bonne version ;
+dans les données (lieux, niveaux, succès, boss, questions), le type `Txt` porte les deux langues : `T("Le Château", "The Castle")`.
+Les articles du Journal restent en français (une note le signale en anglais).
 
 ### Ajouter une question à un boss
 
-Dans `Bestiary.cs`, ajouter une ligne `new("Question ?", "Bonne réponse", ["Faux 1", "Faux 2", "Faux 3"], "Explication.")`.
+Dans `Bestiary.cs`, ajouter une ligne `new(T("Question ?", "Question?"), T("Bonne réponse", "Right answer"), [T("Faux 1", "Wrong 1"), …], T("Explication.", "Explanation."))`.
 Le paramètre `HintPlace` indique le lieu de l'île où trouver la réponse, `Code` affiche un extrait de code,
 et `Phase: 2` réserve la question à la phase enragée du boss final. Les tests vérifient que chaque question est bien formée.
 
@@ -76,6 +93,8 @@ Il faut le [SDK .NET 10](https://dotnet.microsoft.com/download).
 dotnet run --project tools/ErnestWorld.Generator   # met à jour la liste des articles
 dotnet run --project src/ErnestWorld               # lance le site, puis ouvrir l'adresse affichée
 ```
+
+La page d'accueil s'ouvre à l'adresse affichée ; la version jeu est sous `/jeu/`.
 
 Tests : `dotnet test`
 
@@ -96,6 +115,11 @@ Réglée dans `src/ErnestWorld/wwwroot/appsettings.json` :
 - **`"Provider": "mailto"`** (par défaut) : le visiteur envoie un email pré-rempli à Ernest. Aucun compte nécessaire.
 - **`"Provider": "buttondown"`** : les inscriptions vont dans une vraie liste [Buttondown](https://buttondown.com)
   (gratuit jusqu'à 100 abonnés), avec email de confirmation. Créer un compte, puis renseigner `"ButtondownUsername"`.
+
+## Ajouter une certification sur la page d'accueil
+
+Dans `wwwroot/index.html`, section `#certifications`, copier une carte `<li class="card cert">` et changer son contenu.
+Pour la traduction, donner un `data-i18n` à chaque texte et ajouter la version anglaise dans `wwwroot/site/portfolio.js`.
 
 ## Ajouter un lieu sur l'île
 

@@ -1,16 +1,32 @@
-<p class="lead">
-    <strong>Stagiaire développeur / assistant Fablab</strong> chez MyDil (Digital Innovation Lab),
-    pendant mon stage de 1<sup>re</sup> année.
-</p>
+@if (En)
+{
+    <p class="lead">
+        <strong>Developer intern / Fablab assistant</strong> at MyDil (Digital Innovation Lab),
+        during my first-year internship.
+    </p>
 
-<ul class="list">
-    <li><strong>InfraHub</strong>, développée en 2 semaines : une plateforme de gestion de tickets étudiants, avec contrôle d'accès par rôle et escalade automatique des incidents.</li>
-    <li>Un <strong>NAS auto-hébergé</strong> conçu, déployé et administré seul, avec <strong>99,9 %</strong> de disponibilité mesurée.</li>
-    <li><strong>Scrum Master</strong> sur 4 projets collectifs.</li>
-</ul>
+    <ul class="list">
+        <li><strong>InfraHub</strong>, built in 2 weeks: a ticketing platform for students, with role-based access control and automatic incident escalation.</li>
+        <li>A <strong>self-hosted NAS</strong> I designed, deployed and ran on my own, with <strong>99.9%</strong> measured uptime.</li>
+        <li><strong>Scrum Master</strong> on 4 team projects.</li>
+    </ul>
+}
+else
+{
+    <p class="lead">
+        <strong>Stagiaire développeur / assistant Fablab</strong> chez MyDil (Digital Innovation Lab),
+        pendant mon stage de 1<sup>re</sup> année.
+    </p>
+
+    <ul class="list">
+        <li><strong>InfraHub</strong>, développée en 2 semaines : une plateforme de gestion de tickets étudiants, avec contrôle d'accès par rôle et escalade automatique des incidents.</li>
+        <li>Un <strong>NAS auto-hébergé</strong> conçu, déployé et administré seul, avec <strong>99,9 %</strong> de disponibilité mesurée.</li>
+        <li><strong>Scrum Master</strong> sur 4 projets collectifs.</li>
+    </ul>
+}
 
 <Chips Values="Laravel, PostgreSQL, OpenMediaVault, Docker, Tailscale, Scrum" />
 
 <div class="links">
-    <Goto To="camp">Les projets de formation</Goto>
+    <Goto To="camp">@T("Les projets de formation", "School projects")</Goto>
 </div>

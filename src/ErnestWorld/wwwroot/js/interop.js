@@ -31,6 +31,19 @@ export function isSmallScreen() {
   return window.matchMedia("(max-width: 736px)").matches;
 }
 
+export function prefersFrench() {
+  const langs = navigator.languages?.length ? navigator.languages : [navigator.language || "fr"];
+  return langs.some((l) => String(l).toLowerCase().startsWith("fr"));
+}
+
+export function setDocumentLang(code) {
+  document.documentElement.lang = code;
+}
+
+export function printPage() {
+  window.print();
+}
+
 /*
   Suit la lecture d'un article : met à jour la barre de progression et prévient
   le C# une seule fois quand l'article est lu (fin atteinte, ou texte court

@@ -10,14 +10,14 @@
         <div class="newsletter-done" role="status">
             <span class="newsletter-bird"><Icon Name="pigeonnier" Size="22" /></span>
             <div>
-                <p><strong>Pigeon envoyé !</strong></p>
+                <p><strong>@T("Pigeon envoyé !", "Pigeon sent!")</strong></p>
                 @if (Newsletter.Mode == NewsletterMode.Buttondown)
                 {
-                    <p>Vérifie ta boîte mail : un message t'attend pour confirmer ton inscription.</p>
+                    <p>@T("Vérifie ta boîte mail : un message t'attend pour confirmer ton inscription.", "Check your inbox: a message is waiting for you to confirm your subscription.")</p>
                 }
                 else
                 {
-                    <p>Ta messagerie s'est ouverte avec un message prêt : envoie-le pour confirmer ton inscription.</p>
+                    <p>@T("Ta messagerie s'est ouverte avec un message prêt : envoie-le pour confirmer ton inscription.", "Your email app opened with a ready-made message: send it to confirm your subscription.")</p>
                 }
             </div>
         </div>
@@ -27,40 +27,44 @@
         @if (!Compact)
         {
             <p class="newsletter-pitch">
-                Un email quand un nouvel article paraît sur l'île : projets, apprentissages, coulisses.
-                Pas de spam, et tu peux te désinscrire à tout moment.
+                @T("Un email quand un nouvel article paraît sur l'île : projets, apprentissages, coulisses. Pas de spam, et tu peux te désinscrire à tout moment.",
+                    "An email when a new article comes out on the island: projects, lessons learned, behind the scenes. No spam, and you can unsubscribe at any time.")
+                @if (En)
+                {
+                    <span> (Articles are written in French.)</span>
+                }
             </p>
         }
 
         <form @ref="_form" class="newsletter-form" method="post" novalidate
               action="@(Newsletter.Mode == NewsletterMode.Buttondown ? Newsletter.ButtondownAction : null)"
               target="newsletter-frame" @onsubmit="SubmitAsync">
-            <label for="@_inputId" class="sr-only">Ton adresse email</label>
-            <input id="@_inputId" type="email" name="email" placeholder="ton@email.com" autocomplete="email"
+            <label for="@_inputId" class="sr-only">@T("Ton adresse email", "Your email address")</label>
+            <input id="@_inputId" type="email" name="email" placeholder="@T("ton@email.com", "you@email.com")" autocomplete="email"
                    @bind="_email" @bind:event="oninput" aria-invalid="@(_error is not null ? "true" : "false")" />
             <input type="hidden" name="embed" value="1" />
             <button type="submit" class="link-btn primary">
-                <Icon Name="pigeonnier" Size="16" /> S'abonner
+                <Icon Name="pigeonnier" Size="16" /> @T("S'abonner", "Subscribe")
             </button>
         </form>
 
         @if (_error is not null)
         {
-            <p class="form-error" role="alert">@_error</p>
+            <p class="form-error" role="alert">@T("Cette adresse email ne semble pas valide.", "This email address doesn't look valid.")</p>
         }
 
         <p class="newsletter-note">
-            +@Rules.XpSubscribe XP et le succès « Messager »
+            @T($"+{Rules.XpSubscribe} XP et le succès « Messager »", $"+{Rules.XpSubscribe} XP and the “Messenger” achievement")
             @if (Newsletter.Mode == NewsletterMode.Mailto)
             {
-                <span> · l'inscription se fait par un email pré-rempli</span>
+                <span>@T(" · l'inscription se fait par un email pré-rempli", " · you subscribe with a pre-filled email")</span>
             }
         </p>
     }
 
     @if (Newsletter.Mode == NewsletterMode.Buttondown)
     {
-        <iframe name="newsletter-frame" class="sr-only" title="Envoi de l'inscription" tabindex="-1"></iframe>
+        <iframe name="newsletter-frame" class="sr-only" title="@T("Envoi de l'inscription", "Subscription request")" tabindex="-1"></iframe>
     }
 </div>
 
@@ -70,14 +74,14 @@
     private readonly string _inputId = $"newsletter-{Guid.NewGuid():N}";
     private ElementReference _form;
     private string? _email;
-    private string? _error;
+    private bool? _error;
     private bool _sent;
 
     private async Task SubmitAsync()
     {
         if (!NewsletterService.IsValidEmail(_email))
         {
-            _error = "Cette adresse email ne semble pas valide.";
+            _error = true;
             return;
         }
 
@@ -88,14 +92,14 @@
         }
         else
         {
-            await Browser.OpenAsync(Newsletter.MailtoLink(_email!));
+            await Browser.OpenAsync(Newsletter.MailtoLink(_email!, Language));
         }
 
         _sent = true;
         var first = await Game.SetFlagAsync(Flags.Subscribed);
         if (first)
         {
-            Toasts.Show("Newsletter", $"Bienvenue parmi les abonnés · +{Rules.XpSubscribe} XP", "pigeonnier");
+            Toasts.Show("Newsletter", T($"Bienvenue parmi les abonnés · +{Rules.XpSubscribe} XP", $"Welcome aboard · +{Rules.XpSubscribe} XP"), "pigeonnier");
         }
 
         await World.ReleasePigeonAsync();

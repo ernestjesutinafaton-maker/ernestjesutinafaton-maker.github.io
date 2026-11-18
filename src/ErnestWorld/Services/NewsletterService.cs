@@ -50,11 +50,13 @@ public sealed class NewsletterService
     }
 
     /// <summary>Lien « mailto » pré-rempli pour le mode sans service.</summary>
-    public string MailtoLink(string visitorEmail)
+    public string MailtoLink(string visitorEmail, ErnestWorld.Game.Lang lang)
     {
-        var subject = Uri.EscapeDataString("Inscription à la newsletter");
-        var body = Uri.EscapeDataString(
-            $"Bonjour Ernest,\n\nJe souhaite recevoir ta newsletter à cette adresse : {visitorEmail.Trim()}\n\nÀ bientôt !");
+        var english = lang == ErnestWorld.Game.Lang.En;
+        var subject = Uri.EscapeDataString(english ? "Newsletter subscription" : "Inscription à la newsletter");
+        var body = Uri.EscapeDataString(english
+            ? $"Hi Ernest,\n\nI'd like to receive your newsletter at this address: {visitorEmail.Trim()}\n\nSee you soon!"
+            : $"Bonjour Ernest,\n\nJe souhaite recevoir ta newsletter à cette adresse : {visitorEmail.Trim()}\n\nÀ bientôt !");
         return $"mailto:{ContactEmail}?subject={subject}&body={body}";
     }
 }

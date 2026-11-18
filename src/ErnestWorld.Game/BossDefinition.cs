@@ -3,7 +3,7 @@ namespace ErnestWorld.Game;
 /// <summary>Un boss de la campagne.</summary>
 /// <param name="Id">Identifiant, partagé avec le moteur 3D.</param>
 /// <param name="Name">Nom affiché (« Le Golem du Réseau »).</param>
-/// <param name="Title">Sous-titre (« Gardien des serveurs »).</param>
+/// <param name="Title">Sous-titre (« Gardien du niveau 3 »).</param>
 /// <param name="Lore">Petite histoire racontée avant le combat.</param>
 /// <param name="Level">Niveau de la campagne qu'il garde (1 à 5).</param>
 /// <param name="MaxHp">Points de vie.</param>
@@ -16,9 +16,9 @@ namespace ErnestWorld.Game;
 /// <param name="DefeatLine">Ses derniers mots.</param>
 public sealed record BossDefinition(
     string Id,
-    string Name,
-    string Title,
-    string Lore,
+    Txt Name,
+    Txt Title,
+    Txt Lore,
     int Level,
     int MaxHp,
     int HitDamage,
@@ -26,5 +26,5 @@ public sealed record BossDefinition(
     string AchievementId,
     IReadOnlyList<Question> Questions,
     bool TwoPhases,
-    string AttackLine,
-    string DefeatLine);
+    Txt AttackLine,
+    Txt DefeatLine);

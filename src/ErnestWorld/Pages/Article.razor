@@ -6,28 +6,28 @@
 @inject ToastService Toasts
 @inject NavigationManager Nav
 
-<PageTitle>@(_post?.Meta.Title ?? "Article") · Le Journal d'Ernest</PageTitle>
+<PageTitle>@(_post?.Meta.Title ?? T("Article", "Article")) · @T("Le Journal d'Ernest", "Ernest's Journal")</PageTitle>
 
 <div class="overlay">
     <div class="read-progress" aria-hidden="true"><span @ref="_bar"></span></div>
 
     <div class="overlay-scroll" @ref="_scroller">
         <div class="overlay-inner article-wrap">
-            <nav class="overlay-bar" aria-label="Navigation de l'article">
-                <a class="back" href="journal"><Icon Name="arrow-left" Size="16" /> Le Journal</a>
-                <a class="back" href="@($"{Nav.BaseUri}?lieu=scriptorium")">Retour à l'île</a>
+            <nav class="overlay-bar" aria-label="@T("Navigation de l'article", "Article navigation")">
+                <a class="back" href="journal"><Icon Name="arrow-left" Size="16" /> @T("Le Journal", "The Journal")</a>
+                <a class="back" href="jeu/?lieu=scriptorium">@T("Retour à l'île", "Back to the island")</a>
             </nav>
 
             @if (_loading)
             {
-                <p class="loading">Ouverture du parchemin…</p>
+                <p class="loading">@T("Ouverture du parchemin…", "Unrolling the scroll…")</p>
             }
             else if (_post is null)
             {
                 <div class="lost">
-                    <h1>Cet article n'existe pas</h1>
-                    <p>Il a peut-être changé de nom. Les autres sont dans le Journal.</p>
-                    <a class="link-btn primary" href="journal">Ouvrir le Journal</a>
+                    <h1>@T("Cet article n'existe pas", "This article doesn't exist")</h1>
+                    <p>@T("Il a peut-être changé de nom. Les autres sont dans le Journal.", "It may have been renamed. The others are in the Journal.")</p>
+                    <a class="link-btn primary" href="journal">@T("Ouvrir le Journal", "Open the Journal")</a>
                 </div>
             }
             else
@@ -35,45 +35,54 @@
                 var meta = _post.Meta;
                 var read = Game.HasRead(meta.Slug);
 
-                <article class="article">
+                <article class="article" lang="fr">
                     <header class="article-head">
                         <p class="overlay-kicker">@string.Join(" · ", meta.Tags)</p>
                         <h1>@meta.Title</h1>
-                        <p class="article-meta">
-                            <span>@FrenchDate.Format(meta.Date)</span>
-                            <span>@meta.ReadingMinutes min de lecture</span>
+                        <p class="article-meta" lang="@LanguageService.Code(Language)">
+                            <span>@Dates.Format(meta.Date, Language)</span>
+                            <span>@T($"{meta.ReadingMinutes} min de lecture", $"{meta.ReadingMinutes} min read")</span>
                             @if (read)
                             {
-                                <span class="tag tag-live"><Icon Name="check" Size="12" /> Lu</span>
+                                <span class="tag tag-live"><Icon Name="check" Size="12" /> @T("Lu", "Read")</span>
                             }
                             else
                             {
-                                <span class="tag tag-gold">+@Rules.XpPerPost XP à la fin</span>
+                                <span class="tag tag-gold">@T($"+{Rules.XpPerPost} XP à la fin", $"+{Rules.XpPerPost} XP at the end")</span>
                             }
                         </p>
+                        @if (En)
+                        {
+                            <p class="lang-note" lang="en">
+                                <Icon Name="page" Size="16" />
+                                <span>This article is written in French. Your browser can translate it for you (right-click, then “Translate to English”).</span>
+                            </p>
+                        }
                     </header>
 
                     <div class="prose">@((MarkupString)_post.Html)</div>
 
-                    <footer class="article-end">
+                    <footer class="article-end" lang="@LanguageService.Code(Language)">
                         <div class="end-badge @(read ? "is-done" : null)">
                             <Icon Name="@(read ? "check" : "page")" Size="20" />
-                            <span>@(read ? $"Article lu · +{Rules.XpPerPost} XP gagnés" : "Encore quelques lignes pour gagner l'XP…")</span>
+                            <span>@(read
+                                ? T($"Article lu · +{Rules.XpPerPost} XP gagnés", $"Article read · +{Rules.XpPerPost} XP earned")
+                                : T("Encore quelques lignes pour gagner l'XP…", "A few more lines to earn the XP…"))</span>
                         </div>
 
                         <section class="journal-newsletter is-inline" aria-labelledby="article-newsletter">
-                            <h2 id="article-newsletter">Tu veux la suite ?</h2>
+                            <h2 id="article-newsletter">@T("Tu veux la suite ?", "Want more?")</h2>
                             <NewsletterForm Compact />
                         </section>
 
-                        <nav class="article-nav" aria-label="Autres articles">
+                        <nav class="article-nav" aria-label="@T("Autres articles", "Other articles")">
                             @if (_newer is not null)
                             {
-                                <a href="journal/@_newer.Slug"><small>Plus récent</small>@_newer.Title</a>
+                                <a href="journal/@_newer.Slug"><small>@T("Plus récent", "Newer")</small><span lang="fr">@_newer.Title</span></a>
                             }
                             @if (_older is not null)
                             {
-                                <a href="journal/@_older.Slug" class="is-older"><small>Plus ancien</small>@_older.Title</a>
+                                <a href="journal/@_older.Slug" class="is-older"><small>@T("Plus ancien", "Older")</small><span lang="fr">@_older.Title</span></a>
                             }
                         </nav>
                     </footer>
@@ -140,7 +149,7 @@
 
         if (await Game.MarkReadAsync(_post.Meta.Slug))
         {
-            Toasts.Show("Article lu", $"{_post.Meta.Title} · +{Rules.XpPerPost} XP", "page");
+            Toasts.Show(T("Article lu", "Article read"), $"{_post.Meta.Title} · +{Rules.XpPerPost} XP", "page");
         }
     });
 

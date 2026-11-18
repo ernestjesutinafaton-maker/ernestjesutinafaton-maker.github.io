@@ -26,7 +26,7 @@ public sealed record TurnResult(
     bool PhaseChanged,
     BattleStatus Status,
     int CorrectIndex,
-    string Explanation);
+    Txt Explanation);
 
 /// <summary>
 /// Le moteur d'un combat de boss, au tour par tour :

@@ -1,12 +1,12 @@
 @inject BlogService Blog
 
 @* Les « ressources » de l'île : quelques chiffres sur Ernest, façon jeu de stratégie. *@
-<ul class="resources" aria-label="L'île d'Ernest en chiffres">
-    <li title="Projets réalisés"><span class="res-icon"><Icon Name="spark" Size="16" /></span><strong>16</strong><span class="res-label">Projets</span></li>
-    <li title="Technologies utilisées"><span class="res-icon"><Icon Name="forge" Size="16" /></span><strong>40+</strong><span class="res-label">Technos</span></li>
-    <li title="Articles du Journal"><span class="res-icon"><Icon Name="scriptorium" Size="16" /></span><strong>@_posts</strong><span class="res-label">Articles</span></li>
-    <li title="Trophées"><span class="res-icon"><Icon Name="trophy" Size="16" /></span><strong>1</strong><span class="res-label">Trophée</span></li>
-    <li class="res-status" title="Ernest recherche un stage"><span class="status-dot"></span><strong>Dispo</strong><span class="res-label">Stage</span></li>
+<ul class="resources" aria-label="@T("L'île d'Ernest en chiffres", "Ernest's island in numbers")">
+    <li title="@T("Projets réalisés", "Projects built")"><span class="res-icon"><Icon Name="spark" Size="16" /></span><strong>16</strong><span class="res-label">@T("Projets", "Projects")</span></li>
+    <li title="@T("Technologies utilisées", "Technologies used")"><span class="res-icon"><Icon Name="forge" Size="16" /></span><strong>40+</strong><span class="res-label">@T("Technos", "Tech")</span></li>
+    <li title="@T("Articles du Journal", "Journal posts")"><span class="res-icon"><Icon Name="scriptorium" Size="16" /></span><strong>@_posts</strong><span class="res-label">@T("Articles", "Posts")</span></li>
+    <li title="@T("Trophées", "Trophies")"><span class="res-icon"><Icon Name="trophy" Size="16" /></span><strong>1</strong><span class="res-label">@T("Trophée", "Trophy")</span></li>
+    <li class="res-status" title="@T("Ernest recherche un stage", "Ernest is looking for an internship")"><span class="status-dot"></span><strong>@T("Dispo", "Open")</strong><span class="res-label">@T("Stage", "Internship")</span></li>
 </ul>
 
 @code {

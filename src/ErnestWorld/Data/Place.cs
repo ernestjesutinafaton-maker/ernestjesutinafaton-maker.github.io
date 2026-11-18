@@ -1,3 +1,5 @@
+using ErnestWorld.Game;
+
 namespace ErnestWorld.Data;
 
 /// <summary>
@@ -7,17 +9,17 @@ namespace ErnestWorld.Data;
 /// <param name="Name">Nom complet affiché dans le panneau.</param>
 /// <param name="Short">Nom court affiché sur l'île et dans la barre des lieux.</param>
 /// <param name="Kicker">Petite ligne au-dessus du titre du panneau.</param>
-/// <param name="Quest">Intitulé de la quête dans le journal de quêtes.</param>
+/// <param name="Quest">Intitulé de la quête.</param>
 /// <param name="Q">Coordonnée hexagonale (axe q).</param>
 /// <param name="R">Coordonnée hexagonale (axe r).</param>
 /// <param name="Content">Composant Razor affiché dans le panneau.</param>
-/// <param name="IsFinal">La quête finale ne se débloque qu'une fois tous les autres lieux découverts.</param>
+/// <param name="IsFinal">Le Phare, dernière étape de l'aventure.</param>
 public sealed record Place(
     string Id,
-    string Name,
-    string Short,
-    string Kicker,
-    string Quest,
+    Txt Name,
+    Txt Short,
+    Txt Kicker,
+    Txt Quest,
     int Q,
     int R,
     Type Content,
