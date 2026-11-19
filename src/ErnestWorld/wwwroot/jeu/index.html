@@ -60,6 +60,10 @@
     <style>
         html[data-lang="en"] :is(.boot, #blazor-error-ui) [lang="fr"],
         html:not([data-lang="en"]) :is(.boot, #blazor-error-ui) [lang="en"] { display: none; }
+        .boot-failed { max-width: 26rem; margin: 0 auto; font-size: 0.95rem; line-height: 1.5; color: #c9c3e3; }
+        .boot-failed p { margin: 0 0 1rem; }
+        .boot-failed a { display: inline-block; margin: 0 0.3rem; padding: 0.55rem 1.1rem; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 999px; color: #f4f1ff; text-decoration: none; }
+        .boot-failed a.boot-retry { border-color: transparent; background: linear-gradient(180deg, #ffe08a, #f5c451 45%, #c8922a); color: #1a1203; font-weight: 700; }
     </style>
 </head>
 
@@ -69,6 +73,13 @@
             <p class="boot-title"><span lang="fr">Le Monde<br /><span>d'Ernest</span></span><span lang="en">Ernest's<br /><span>World</span></span></p>
             <div class="boot-bar"><span></span></div>
             <p class="boot-text"><span lang="fr">Construction de l'île</span><span lang="en">Building the island</span></p>
+            <div class="boot-failed" id="boot-failed" hidden>
+                <p><span lang="fr">Le chargement du jeu a échoué (connexion ou serveur momentanément indisponible).</span><span lang="en">The game failed to load (connection or server briefly unavailable).</span></p>
+                <p>
+                    <a href="jeu/" class="boot-retry"><span lang="fr">Réessayer</span><span lang="en">Try again</span></a>
+                    <a href="/"><span lang="fr">Voir le portfolio</span><span lang="en">See the portfolio</span></a>
+                </p>
+            </div>
         </div>
     </div>
 
@@ -84,7 +95,68 @@
         <a href="jeu/" class="reload">↻</a>
         <span class="dismiss" role="button" aria-label="Fermer / Close">×</span>
     </div>
-    <script src="_framework/blazor.webassembly#[.{fingerprint}].js"></script>
+    <script src="_framework/blazor.webassembly#[.{fingerprint}].js" autostart="false"></script>
+    <!--
+      Démarrage de Blazor avec une seconde chance : si un fichier n'arrive pas (serveur momentanément
+      indisponible, par exemple pendant une mise en ligne), la page se recharge une fois en contournant
+      le cache du navigateur. Si ça échoue encore, un message propose de réessayer ou d'ouvrir le portfolio.
+    -->
+    <script>
+        (function () {
+            var KEY = "ernest-boot-retry";
+            var STALL_SECONDS = 40; // chargement figé aussi longtemps : on considère qu'il a échoué
+            var retrying = false, settled = false;
+            try { retrying = sessionStorage.getItem(KEY) === "1"; } catch (e) { }
+
+            function fail(error) {
+                if (settled) return;
+                settled = true;
+                clearInterval(watchdog);
+                console.error(error);
+                var errorBar = document.getElementById("blazor-error-ui");
+                if (errorBar) errorBar.style.display = "none";
+                if (!retrying) {
+                    try { sessionStorage.setItem(KEY, "1"); } catch (e) { }
+                    setTimeout(function () { window.location.reload(); }, 1200);
+                    return;
+                }
+                try { sessionStorage.removeItem(KEY); } catch (e) { }
+                var failed = document.getElementById("boot-failed");
+                if (failed) {
+                    failed.hidden = false;
+                    document.querySelectorAll(".boot-bar, .boot-text").forEach(function (el) { el.style.display = "none"; });
+                }
+            }
+
+            // Un fichier bloqué peut laisser le chargement figé sans erreur : on surveille la progression.
+            var last = null, still = 0;
+            var watchdog = setInterval(function () {
+                if (!document.querySelector("#app > .boot")) { settled = true; clearInterval(watchdog); return; } // le jeu s'affiche
+                var progress = getComputedStyle(document.documentElement).getPropertyValue("--blazor-load-percentage").trim();
+                still = progress === last ? still + 1 : 0;
+                last = progress;
+                if (still >= STALL_SECONDS) fail(new Error("Chargement figé à " + (progress || "0 %")));
+            }, 1000);
+
+            // L'erreur de démarrage de Blazor remonte comme une promesse non gérée : on l'attrape tout de suite.
+            window.addEventListener("unhandledrejection", function (event) {
+                if (/Failed to start platform/i.test(String(event.reason))) fail(event.reason);
+            });
+
+            Blazor.start({
+                loadBootResource: function (type, name, defaultUri) {
+                    // Seconde chance : on retélécharge les assemblies et le wasm sans passer par le cache.
+                    // Les scripts (dotnetjs) gardent leur adresse, sinon la table d'import ne les retrouve plus.
+                    if (!retrying || !/^(assembly|pdb|dotnetwasm|globalization)$/.test(type)) return defaultUri;
+                    return defaultUri + (defaultUri.indexOf("?") < 0 ? "?" : "&") + "retry=" + Date.now();
+                }
+            }).then(function () {
+                settled = true;
+                clearInterval(watchdog);
+                try { sessionStorage.removeItem(KEY); } catch (e) { }
+            }).catch(fail);
+        })();
+    </script>
 </body>
 
 </html>
