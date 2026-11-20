@@ -1,9 +1,9 @@
 /*
   MODE LIBRE · se promener dans le royaume avec Ernest
 
-  Ordinateur : ZQSD, WASD ou les flèches pour marcher, Maj pour courir, glisser pour tourner la caméra,
-  molette pour l'éloigner, E (ou Entrée) pour parler, Échap pour fermer un dialogue.
-  Téléphone : un joystick à gauche, glisser à droite pour regarder, un bouton « Parler ».
+  Ordinateur : ZQSD, WASD ou les flèches pour marcher, Maj pour courir, Espace pour sauter, glisser pour
+  tourner la caméra, molette pour l'éloigner, E (ou Entrée) pour parler, Échap pour fermer un dialogue.
+  Téléphone : un joystick à gauche, glisser à droite pour regarder, des boutons « Parler » et « Sauter ».
 
   Les collisions viennent de la carte de marche (royaume_carte.png) : on glisse le long des murs, on passe
   les portes, et la caméra se rapproche quand on entre dans un bâtiment.
@@ -30,6 +30,9 @@ export class Exploration {
     this.distance = 5.5;
     this.distanceVoulue = 5.5;
     this.joystick = new THREE.Vector2();
+    this.saut = 0;          // hauteur du saut au-dessus du sol
+    this.vSaut = 0;         // vitesse verticale du saut
+    this.sol = null;        // hauteur du sol, lissée
     this.cible = new THREE.Vector3();
     this.camPos = new THREE.Vector3();
     this.interlocuteur = null;
@@ -51,6 +54,7 @@ export class Exploration {
         e.preventDefault();
         return;
       }
+      if (e.code === "Space" && !this.dialogue.ouvert) { this.sauter(); e.preventDefault(); return; }
       this.touches.add(e.code);
       if (e.code.startsWith("Arrow") || e.code === "Space") e.preventDefault();
     });
@@ -98,6 +102,7 @@ export class Exploration {
       zone.addEventListener("pointercancel", relache);
     }
     this.boutonParler?.addEventListener("click", () => this.parler());
+    document.querySelector(".bouton-sauter")?.addEventListener("click", () => this.sauter());
     this.invite?.addEventListener("click", () => this.parler());
   }
 
@@ -109,6 +114,8 @@ export class Exploration {
     this.yaw = cap + Math.PI;
     this.actif = true;
     this.premier = true;
+    this.sol = null;
+    this.saut = this.vSaut = 0;
     this.distance = this.distanceVoulue = 5.5;
   }
 
@@ -117,6 +124,10 @@ export class Exploration {
     this.touches.clear();
     this.dialogue.clore();
     this._invite(null);
+  }
+
+  sauter() {
+    if (this.actif && this.saut <= 0.001) this.vSaut = 5.4;
   }
 
   parler() {
@@ -189,7 +200,14 @@ export class Exploration {
     } else {
       h.anim = "repos";
     }
-    h.pos.y += (this.carte.hauteur(h.pos.x, h.pos.z, h.pos.y) - h.pos.y) * Math.min(1, dt * 12);
+    // Sol (lissé, pour monter les marches sans à-coups) et saut (une parabole)
+    const sol = this.carte.hauteur(h.pos.x, h.pos.z, this.sol ?? h.pos.y);
+    this.sol = this.sol === null ? sol : this.sol + (sol - this.sol) * Math.min(1, dt * 12);
+    this.vSaut -= 15 * dt;
+    this.saut = Math.max(0, this.saut + this.vSaut * dt);
+    if (this.saut === 0) this.vSaut = 0;
+    h.pos.y = this.sol + this.saut;
+    if (this.saut > 0.04) h.anim = "saut";
     // Caméra : derrière Ernest, plus près à l'intérieur
     const dedans = this.carte.interieur(h.pos.x, h.pos.z) > 0;
     const voulue = dedans ? Math.min(2.6, this.distanceVoulue) : this.distanceVoulue;
