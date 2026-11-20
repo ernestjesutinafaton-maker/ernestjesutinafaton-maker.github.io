@@ -554,3 +554,111 @@ button { font: inherit; }
   .gradient-text { color: #111; background: none; }
   a { text-decoration: none; }
 }
+
+/* =========================================================================
+   Direction éditoriale (novembre 2026)
+   Même famille que la version 3D : un serif de titrage (Instrument Serif) avec des italiques,
+   un texte neutre (Geist), des étiquettes en chasse fixe (Fragment Mono). Fini les dégradés violets
+   et les halos : texte crème sur fond chaud presque noir, filets fins, une seule couleur d'accent (braise).
+   Cette couche vient en dernier et remplace les réglages plus haut.
+   ========================================================================= */
+
+:root {
+  --bg: #12100e;
+  --bg-2: #191613;
+  --surface: rgba(243, 237, 226, 0.03);
+  --surface-2: rgba(243, 237, 226, 0.07);
+  --line: rgba(243, 237, 226, 0.12);
+  --line-2: rgba(243, 237, 226, 0.26);
+  --ink: #f3ede2;
+  --ink-2: rgba(243, 237, 226, 0.78);
+  --ink-3: rgba(243, 237, 226, 0.55);
+  --violet: #b9773f;
+  --rose: #e9a466;
+  --gold: #e9a466;
+  --accent-text: #e9a466;
+  --soft-violet: #d8c9b4;
+  --grad: linear-gradient(var(--ink), var(--ink));
+  --grad-btn: linear-gradient(var(--ink), var(--ink));
+  --glow: 0 0 0 0 transparent;
+  --radius: 4px;
+  --head: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  --text: "Geist", "Helvetica Neue", Arial, sans-serif;
+  --mono: "Fragment Mono", "SFMono-Regular", Consolas, monospace;
+}
+
+:root[data-theme="light"] {
+  --bg: #f3eee5;
+  --bg-2: #ebe4d8;
+  --surface: rgba(27, 23, 20, 0.025);
+  --surface-2: rgba(27, 23, 20, 0.06);
+  --line: rgba(27, 23, 20, 0.12);
+  --line-2: rgba(27, 23, 20, 0.26);
+  --ink: #1b1714;
+  --ink-2: rgba(27, 23, 20, 0.78);
+  --ink-3: rgba(27, 23, 20, 0.56);
+  --accent-text: #9a4f14;
+  --soft-violet: #6e5a45;
+  --grad: linear-gradient(var(--ink), var(--ink));
+  --grad-btn: linear-gradient(var(--ink), var(--ink));
+}
+
+/* Le serif n'existe qu'en une graisse : on interdit le faux gras plutôt que de l'épaissir artificiellement */
+html { font-synthesis: none; }
+body { -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 1px solid var(--rose); border-radius: 0; }
+
+.gradient-text { background: none; -webkit-background-clip: initial; background-clip: initial; color: var(--ink); font-style: italic; }
+
+/* Logo : le nom en italique, sans le carré en dégradé */
+.logo-mark { display: none; }
+.logo-text { font: italic 400 22px/1 var(--head); letter-spacing: -0.01em; }
+
+/* Boutons : rectangles fins, étiquettes en capitales */
+.btn {
+  border-radius: 0; font: 400 12px/1 var(--mono); letter-spacing: 0.09em; text-transform: uppercase;
+}
+.btn-large { height: 52px; font-size: 12.5px; }
+.btn-small { height: 36px; font-size: 11.5px; }
+.btn svg { width: 15px; height: 15px; stroke-width: 1.5; }
+.btn:hover { transform: none; }
+.btn-play { color: var(--bg); background: var(--ink); box-shadow: none; }
+.btn-play:hover { filter: none; background: var(--rose); box-shadow: none; }
+.play-ring { display: none; }
+.btn-primary:hover { background: var(--rose); box-shadow: none; }
+.btn-ghost { background: transparent; }
+.btn-ghost:hover { background: var(--ink); color: var(--bg); }
+
+/* Accueil : plus de taches de couleur floues en fond */
+.hero-bg { display: none; }
+.hero h1 { font-weight: 400; letter-spacing: -0.03em; line-height: 0.92; }
+.hero h1 .gradient-text { font-size: clamp(3.6rem, 9vw, 7.4rem); font-style: normal; }
+.hero-hello { font: 400 13px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-2); }
+.hero-role { font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; }
+.status { border-radius: 0; font: 400 11.5px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; background: transparent; }
+.lien-3d { border-radius: 0; background: transparent; }
+.lien-3d-badge { border-radius: 0; background: var(--rose); color: #12100e; font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.stats li { border-radius: 0; background: transparent; }
+.stats strong { font: 400 2.1rem/1.1 var(--head); letter-spacing: -0.02em; }
+
+/* Titres de section en grand serif, étiquettes en chasse fixe */
+.eyebrow { font: 400 11.5px/1.4 var(--mono); letter-spacing: 0.12em; }
+.section h2 { font: 400 clamp(2.3rem, 5vw, 3.8rem)/1.02 var(--head); letter-spacing: -0.025em; }
+.project h3, .certs-head h3, .cert-group-head h4, .exp-head h3 { font-weight: 400; font-size: 1.7rem; letter-spacing: -0.015em; }
+.skill h3, .step h3, .timeline h3, .module h3, .post h3, .cert h5, .cert h4, .game-caption strong { font-weight: 400; font-size: 1.35rem; letter-spacing: -0.01em; }
+.project-links a, .cert-link { font: 400 11.5px/1.6 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.card, .project, .cert, .skill, .step, .contact-card, .experience, .facts { border-radius: var(--radius); }
+.project.featured { background: var(--surface); border-color: var(--line-2); }
+:root[data-theme="light"] .project.featured { background: var(--surface); }
+.pill, .badge, .chips li { border-radius: 0; }
+.cert-icon, .step-num, .skill-icon { border-radius: 0; box-shadow: none; }
+.cert-icon, .step-num { background: var(--ink); color: var(--bg); }
+.cert-icon svg { stroke: var(--bg); }
+.section-game { background: none; }
+.contact-card { background: var(--surface); }
+.game-card:hover .game-play { background: rgba(233, 164, 102, 0.55); }
+.game-play { box-shadow: 0 0 0 10px rgba(255, 255, 255, 0.07); }
+.filter, .nav a, .lang-switch, .lang-switch button, .icon-btn, .copy-mail { border-radius: 0 !important; }
+.filter { font: 400 11.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.pill-game { color: var(--rose); border-color: rgba(233, 164, 102, 0.45); background: rgba(233, 164, 102, 0.08); }
+.timeline li.is-current::before { box-shadow: 0 0 0 4px rgba(233, 164, 102, 0.18); }
