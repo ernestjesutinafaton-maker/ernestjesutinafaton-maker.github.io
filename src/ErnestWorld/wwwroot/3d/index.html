@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<!--
+  L'ÎLE EN 3D · version immersive du portfolio d'Ernest Afaton
+  L'île est modélisée dans Blender par un script (tools/blender/ile.py), sa lumière est calculée par Cycles
+  et enregistrée dans des textures, puis Three.js l'affiche ici (ile3d.js). Le défilement de la page guide
+  la caméra d'un lieu à l'autre ; chaque chapitre est une vraie section HTML, lisible même sans la 3D.
+  Le texte est en français dans la page ; ile3d.js le passe en anglais à la demande.
+-->
+<html lang="fr" data-lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+
+  <title>Ernest Afaton · L'île en 3D</title>
+  <meta name="description" content="Le portfolio d'Ernest Afaton en version immersive : une île en 3D au coucher du soleil, modélisée et éclairée dans Blender, à parcourir en faisant défiler la page.">
+  <meta name="theme-color" content="#1a1430">
+  <link rel="canonical" href="https://ernestjesutinafaton-maker.github.io/3d/">
+
+  <meta property="og:title" content="Ernest Afaton · L'île en 3D">
+  <meta property="og:description" content="Mon portfolio en version immersive : une île modélisée dans Blender, à explorer au défilement.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://ernestjesutinafaton-maker.github.io/3d/">
+  <meta property="og:image" content="https://ernestjesutinafaton-maker.github.io/3d/assets/affiche.webp">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238B5CF6'/%3E%3Cstop offset='1' stop-color='%23D946EF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-weight='700' font-size='26' fill='white'%3EEA%3C/text%3E%3C/svg%3E">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <!-- Langue choisie avant l'affichage (même réglage que le reste du site : « ernest-lang ») -->
+  <script>
+    (function () {
+      var d = document.documentElement, lang = null;
+      d.classList.add("js");
+      try {
+        var q = new URLSearchParams(location.search).get("lang");
+        if (q === "fr" || q === "en") { lang = q; localStorage.setItem("ernest-lang", q); }
+        else { var s = localStorage.getItem("ernest-lang"); if (s === "fr" || s === "en") lang = s; }
+      } catch (e) {}
+      if (!lang) lang = /^fr/i.test(navigator.language || "fr") ? "fr" : "en";
+      d.lang = lang;
+      d.setAttribute("data-lang", lang);
+      if (lang === "en") { d.classList.add("i18n-pending"); setTimeout(function () { d.classList.remove("i18n-pending"); }, 2500); }
+    })();
+  </script>
+
+  <link rel="preload" href="assets/ile.glb" as="fetch" crossorigin>
+  <link rel="stylesheet" href="ile3d.css">
+  <script type="module" src="ile3d.js"></script>
+</head>
+
+<body>
+  <a class="skip" href="#ch0" data-i18n="skip">Aller au contenu</a>
+
+  <!-- Image de l'île (rendue par Blender) : visible tout de suite, puis remplacée par la 3D -->
+  <div class="affiche" aria-hidden="true"></div>
+  <canvas id="scene" aria-hidden="true"></canvas>
+  <div class="voile" aria-hidden="true"></div>
+  <div class="progression" aria-hidden="true"><span></span></div>
+
+  <header class="barre">
+    <a class="logo" href="../" data-i18n-attr="aria-label=logo.label" aria-label="Retour au portfolio classique">
+      <span class="logo-mark">EA</span>
+      <span class="logo-text">Ernest Afaton</span>
+    </a>
+    <nav class="versions" data-i18n-attr="aria-label=nav.label" aria-label="Autres versions du portfolio">
+      <a href="../" data-i18n="nav.classic">Version classique</a>
+      <a href="../jeu/" data-i18n="nav.game">Version jeu</a>
+    </nav>
+    <div class="lang-switch" role="group" aria-label="Langue / Language">
+      <button type="button" data-set-lang="fr" lang="fr" aria-pressed="true">FR</button>
+      <button type="button" data-set-lang="en" lang="en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <nav class="sommaire" data-i18n-attr="aria-label=toc.label" aria-label="Chapitres">
+    <ol>
+      <li><a href="#ch0" data-chapitre="0"><span data-i18n="toc.0">Accueil</span></a></li>
+      <li><a href="#ch1" data-chapitre="1"><span data-i18n="toc.1">À propos</span></a></li>
+      <li><a href="#ch2" data-chapitre="2"><span data-i18n="toc.2">Expérience</span></a></li>
+      <li><a href="#ch3" data-chapitre="3"><span data-i18n="toc.3">Compétences</span></a></li>
+      <li><a href="#ch4" data-chapitre="4"><span data-i18n="toc.4">Projets</span></a></li>
+      <li><a href="#ch5" data-chapitre="5"><span data-i18n="toc.5">Contact</span></a></li>
+    </ol>
+  </nav>
+
+  <main id="chapitres">
+
+    <!-- 0 · Vue d'ensemble de l'île -->
+    <section class="chapitre" id="ch0" data-chapitre="0" aria-labelledby="t0">
+      <div class="scene-texte">
+        <div class="panneau panneau-accueil cote-gauche">
+          <p class="statut"><span class="point" aria-hidden="true"></span><span data-i18n="hero.status">Disponible pour un stage de 4 à 5 semaines</span></p>
+          <h1 id="t0"><span class="bonjour" data-i18n="hero.hello">Bonjour, je suis</span><span class="degrade">Ernest Afaton</span></h1>
+          <p class="role" data-i18n="hero.role">Développeur web et mobile · Systèmes et réseaux · IoT</p>
+          <p data-i18n="hero.lead">Bienvenue sur mon île : mon portfolio en version immersive. Fais défiler la page, chaque lieu raconte une partie de mon parcours.</p>
+          <p class="indice" aria-hidden="true"><span class="souris"><i></i></span><span data-i18n="hero.cue">Défiler pour explorer</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 1 · L'arche : à propos -->
+    <section class="chapitre" id="ch1" data-chapitre="1" aria-labelledby="t1">
+      <div class="scene-texte">
+        <div class="panneau cote-gauche">
+          <p class="surtitre"><span>01</span> <span data-i18n="about.eyebrow">L'arche · À propos</span></p>
+          <h2 id="t1" data-i18n="about.title">Comprendre comment les choses fonctionnent, puis les construire.</h2>
+          <p data-i18n="about.p1">Je suis en 2<sup>e</sup> année de Bachelor Informatique à l'EPSI Lyon, parcours Conception et Développement, et je prépare aussi le BTS SIO option SLAM (session 2027).</p>
+          <p data-i18n="about.p2">J'aime descendre dans les couches : d'un framework PHP écrit sans librairie jusqu'à un serveur NAS conteneurisé accessible à distance.</p>
+          <ul class="faits">
+            <li><span data-i18n="facts.city">Lyon, France</span></li>
+            <li><span data-i18n="facts.lang">Français natif · Anglais B2</span></li>
+            <li><span data-i18n="facts.seek">Stage de 4 à 5 semaines</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2 · L'atelier : expérience -->
+    <section class="chapitre" id="ch2" data-chapitre="2" aria-labelledby="t2">
+      <div class="scene-texte">
+        <div class="panneau cote-droite">
+          <p class="surtitre"><span>02</span> <span data-i18n="exp.eyebrow">L'atelier · Expérience</span></p>
+          <h2 id="t2" data-i18n="exp.title">Développeur stagiaire et assistant Fablab chez MyDil.</h2>
+          <p class="meta" data-i18n="exp.when">Avril - juin 2026 · Digital Innovation Lab</p>
+          <ul class="liste">
+            <li data-i18n="exp.l1"><strong>InfraHub</strong>, développée en 2 semaines : gestion de tickets étudiants, contrôle d'accès par rôle et escalade automatique des incidents.</li>
+            <li data-i18n="exp.l2"><strong>NAS auto-hébergé</strong> conçu, déployé et administré seul, avec <strong>99,9 %</strong> de disponibilité mesurée.</li>
+            <li data-i18n="exp.l3"><strong>Scrum Master</strong> sur 4 projets collectifs.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3 · Le cercle de pierres : compétences -->
+    <section class="chapitre" id="ch3" data-chapitre="3" aria-labelledby="t3">
+      <div class="scene-texte">
+        <div class="panneau cote-gauche panneau-large">
+          <p class="surtitre"><span>03</span> <span data-i18n="skills.eyebrow">Le cercle de pierres · Compétences</span></p>
+          <h2 id="t3" data-i18n="skills.title">Du code à l'infrastructure.</h2>
+          <p data-i18n="skills.sub">Sept pierres, sept familles de compétences.</p>
+          <ul class="competences">
+            <li><strong data-i18n="sk.web">Développement web</strong><span>Next.js · React · Symfony · Laravel · Three.js</span></li>
+            <li><strong data-i18n="sk.cs">C# et .NET</strong><span>Blazor WebAssembly · .NET 10 · xUnit</span></li>
+            <li><strong data-i18n="sk.mobile">Mobile</strong><span>React Native · Expo · Tauri · PowerSync</span></li>
+            <li><strong data-i18n="sk.back">Back-end et données</strong><span>PostgreSQL · Supabase · Node.js · FastAPI</span></li>
+            <li><strong data-i18n="sk.net">Systèmes et réseaux</strong><span>Linux · Active Directory · Docker · HSRP / VRRP</span></li>
+            <li><strong data-i18n="sk.iot">IoT et embarqué</strong><span>Raspberry Pi · Arduino · NFC · Python</span></li>
+            <li><strong data-i18n="sk.tools">Méthodes</strong><span>Scrum · Git · GitHub Actions · <span data-i18n="sk.tests">tests unitaires</span></span></li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 · Les trois cristaux : projets -->
+    <section class="chapitre" id="ch4" data-chapitre="4" aria-labelledby="t4">
+      <div class="scene-texte">
+        <div class="panneau cote-gauche">
+          <p class="surtitre"><span>04</span> <span data-i18n="proj.eyebrow">Les cristaux · Projets</span></p>
+          <h2 id="t4" data-i18n="proj.title">Ce que j'ai construit.</h2>
+          <ul class="projets">
+            <li class="projet vert">
+              <h3>ÉcoPay</h3>
+              <p data-i18n="p.ecopay">SaaS d'encaissement des frais de scolarité pour les écoles privées d'Afrique de l'Ouest, avec paiement Mobile Money et rappels automatiques.</p>
+              <a href="https://ecopay-services.vercel.app" target="_blank" rel="noopener"><span data-i18n="p.site">Voir le site</span> <span aria-hidden="true">↗</span></a>
+            </li>
+            <li class="projet violet">
+              <h3>Boutik</h3>
+              <p data-i18n="p.boutik">Caisse, stock et ventes à crédit pour les commerces, sur Android, iPhone et ordinateur, même sans connexion.</p>
+              <a href="https://boutik-services.vercel.app" target="_blank" rel="noopener"><span data-i18n="p.site">Voir le site</span> <span aria-hidden="true">↗</span></a>
+            </li>
+            <li class="projet rose">
+              <h3 data-i18n="p.worldName">Le Monde d'Ernest</h3>
+              <p data-i18n="p.world">La version jeu de ce portfolio : une île en 3D, 16 lieux et 5 boss, écrite en C# avec Blazor.</p>
+              <a href="../jeu/"><span data-i18n="p.play">Jouer</span> <span aria-hidden="true">→</span></a>
+            </li>
+          </ul>
+          <a class="lien-fleche" href="../#projets"><span data-i18n="proj.all">Voir mes 16 projets</span> <span aria-hidden="true">→</span></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5 · Le phare : contact -->
+    <section class="chapitre" id="ch5" data-chapitre="5" aria-labelledby="t5">
+      <div class="scene-texte">
+        <div class="panneau cote-gauche">
+          <p class="surtitre"><span>05</span> <span data-i18n="contact.eyebrow">Le phare · Contact</span></p>
+          <h2 id="t5"><span data-i18n="contact.title">Un stage à proposer ?</span> <span class="degrade" data-i18n="contact.title2">Parlons-en.</span></h2>
+          <p data-i18n="contact.text">Je recherche un stage de 4 à 5 semaines en développement ou en systèmes et réseaux. Le plus simple pour me joindre : l'email ou LinkedIn.</p>
+          <div class="actions">
+            <a class="bouton bouton-plein" href="mailto:ernestjesutinafaton@gmail.com">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+              <span data-i18n="contact.mail">Envoyer un email</span>
+            </a>
+            <a class="bouton" href="https://linkedin.com/in/ernest-afaton-1280a4361/" target="_blank" rel="noopener">LinkedIn</a>
+            <a class="bouton" href="https://github.com/ernestjesutinafaton-maker" target="_blank" rel="noopener">GitHub</a>
+          </div>
+          <p class="autres">
+            <a href="../" data-i18n="contact.classic">Portfolio classique</a> ·
+            <a href="../jeu/" data-i18n="contact.game">Version jeu</a> ·
+            <a href="https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/tree/main/tools/blender" target="_blank" rel="noopener" data-i18n="contact.how">Comment l'île est faite</a>
+          </p>
+          <p class="credit" data-i18n="contact.credit">Île modélisée par un script Python dans Blender, lumière calculée par Cycles, affichée avec Three.js.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Écran de chargement -->
+  <div class="chargement" role="status" aria-live="polite">
+    <div class="chargement-contenu">
+      <span class="logo-mark grand" aria-hidden="true">EA</span>
+      <p class="chargement-titre" data-i18n="load.title">L'île se prépare…</p>
+      <div class="barre-chargement" aria-hidden="true"><span></span></div>
+      <p class="chargement-pourcent" aria-hidden="true">0 %</p>
+      <a class="chargement-lien" href="../" data-i18n="load.classic">Voir plutôt la version classique</a>
+    </div>
+  </div>
+
+  <p class="sans-3d-note" role="note" data-i18n="no3d">La 3D n'a pas pu démarrer sur cet appareil : voici l'île en image, et tout le contenu reste lisible.</p>
+
+  <noscript><p class="sans-3d-note visible">La 3D a besoin de JavaScript. Le <a href="../">portfolio classique</a> fonctionne sans.</p></noscript>
+</body>
+</html>

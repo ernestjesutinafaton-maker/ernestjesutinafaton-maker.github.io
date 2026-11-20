@@ -33,6 +33,8 @@
     "hero.lead": "Second-year Computer Science Bachelor's student at EPSI Lyon, France. I build complete apps, set up infrastructure and prototype connected devices. My portfolio also exists as a game: a 3D island to explore.",
     "hero.play": "Play my portfolio",
     "hero.projects": "See my projects",
+    "hero.new3dBadge": "New",
+    "hero.new3d": "The 3D island, modeled in Blender: explore it by scrolling",
     "stats.label": "A few numbers",
     "stats.projects": "projects",
     "stats.certs": "certificates earned",
@@ -238,6 +240,7 @@
     "contact.copy": "Copy",
 
     "footer.play": "Game version",
+    "footer.3d": "3D version",
     "footer.journal": "Journal",
     "footer.source": "Source code",
     "footer.top": "Back to top"

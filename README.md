@@ -2,19 +2,23 @@
 
 [![Déploiement](https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/actions/workflows/deploy.yml)
 
-Portfolio et blog d'Ernest Afaton, en deux versions :
+Portfolio et blog d'Ernest Afaton, en trois versions :
 
 - **le portfolio classique**, en page d'accueil : tout le parcours sur une seule page (projets, compétences, formation, certifications) ;
+- **la version immersive**, sous `/3d/` : une île au coucher du soleil, modélisée et éclairée dans **Blender**,
+  que l'on parcourt en faisant défiler la page. Chaque lieu de l'île est un chapitre du parcours ;
 - **la version jeu**, sous `/jeu/` : une île en 3D où chaque bâtiment est une section. Le visiteur gagne de l'XP,
   monte de rang, affronte des boss et débloque des succès en explorant et en lisant le Journal (blog).
 
-Les deux versions existent en français et en anglais (bouton FR / EN, ou `?lang=en` dans l'adresse).
+Les trois versions existent en français et en anglais (bouton FR / EN, ou `?lang=en` dans l'adresse).
 
-**Portfolio :** https://ernestjesutinafaton-maker.github.io · **Jeu :** https://ernestjesutinafaton-maker.github.io/jeu/
+**Portfolio :** https://ernestjesutinafaton-maker.github.io · **Île en 3D :** https://ernestjesutinafaton-maker.github.io/3d/ · **Jeu :** https://ernestjesutinafaton-maker.github.io/jeu/
 
 ![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)
 
-> **In English:** my portfolio and blog. The home page is a classic one-page resume; the game version is a 3D island
+> **In English:** my portfolio and blog. The home page is a classic one-page resume; the immersive version
+> ([/3d/](https://ernestjesutinafaton-maker.github.io/3d/?lang=en)) is a sunset island modeled by a Python script in
+> **Blender**, with lighting baked by Cycles and rendered by Three.js as you scroll; the game version is a 3D island
 > where every building is a part of my journey, with 5 bosses to fight in turn-based battles where questions about my
 > projects are your attacks. Both are available in English. Built with **C# (Blazor WebAssembly, .NET 10)**, **Three.js**,
 > xUnit and GitHub Actions. **[Portfolio](https://ernestjesutinafaton-maker.github.io/?lang=en)** · **[Play it](https://ernestjesutinafaton-maker.github.io/jeu/?lang=en)**
@@ -26,6 +30,7 @@ Les deux versions existent en français et en anglais (bouton FR / EN, ou `?lang
 | Partie | Technologie |
 |---|---|
 | Page d'accueil | HTML, CSS et JavaScript, sans framework : s'affiche tout de suite, imprimable |
+| Version immersive | **Blender 5** (scène générée par un script Python, lumière cuite avec Cycles), glTF compressé avec Draco, Three.js |
 | Version jeu | **C#** avec **Blazor WebAssembly** (.NET 10) : le C# s'exécute dans le navigateur |
 | Règles du jeu | Bibliothèque C# testée : moteur de combat, boss et questions |
 | Île en 3D | Three.js (WebGL), pilotée depuis le C# : ombres, bloom, contours, particules, ciel jour/nuit |
@@ -41,6 +46,7 @@ Les deux versions existent en français et en anglais (bouton FR / EN, ou `?lang
 src/ErnestWorld/              Le site
   wwwroot/index.html          Page d'accueil : le portfolio classique (texte français dans la page)
   wwwroot/site/               Style et script de la page d'accueil (traduction anglaise dans portfolio.js)
+  wwwroot/3d/                 Version immersive : page, moteur Three.js (ile3d.js), modèle et textures (assets/)
   wwwroot/jeu/index.html      Page qui lance la version jeu (Blazor WebAssembly)
   Components/World/           L'île : interface de jeu, quêtes, succès, visite guidée
   Components/Places/          Le contenu de chaque bâtiment (un fichier par lieu)
@@ -56,6 +62,7 @@ src/ErnestWorld/              Le site
 src/ErnestWorld.Content/      Lecture des articles (en-tête, temps de lecture), partagée
 src/ErnestWorld.Game/         Règles du jeu : moteur de combat (Battle), boss et questions (Bestiary)
 tools/ErnestWorld.Generator/  Générateur du Journal
+tools/blender/ile.py          Scène Blender de la version immersive (modélisation, cuisson, export)
 tests/                        Tests unitaires (articles, combats, questions)
 ```
 
@@ -84,6 +91,41 @@ Les articles du Journal restent en français (une note le signale en anglais).
 Dans `Bestiary.cs`, ajouter une ligne `new(T("Question ?", "Question?"), T("Bonne réponse", "Right answer"), [T("Faux 1", "Wrong 1"), …], T("Explication.", "Explanation."))`.
 Le paramètre `HintPlace` indique le lieu de l'île où trouver la réponse, `Code` affiche un extrait de code,
 et `Phase: 2` réserve la question à la phase enragée du boss final. Les tests vérifient que chaque question est bien formée.
+
+## L'île en 3D (Blender)
+
+La version immersive (`/3d/`) suit la méthode des sites 3D « réalistes » : on ne demande pas au navigateur de calculer
+l'éclairage, on le **cuit** à l'avance.
+
+1. `tools/blender/ile.py` construit l'île dans Blender avec Python : relief et falaise, chemin, arche, atelier, cercle de
+   menhirs, socles des cristaux, phare, une centaine d'arbres, et le trajet de la caméra (objets vides `cam_XX` / `cible_XX`).
+2. Cycles calcule la lumière du coucher de soleil (soleil, ciel, ombres douces, lumière qui rebondit, fenêtres allumées)
+   et l'enregistre dans quatre **atlas** (terrain, roche, bâtiments, végétation), en WebP de 1024 à 4096 pixels.
+3. Le modèle part en glTF compressé avec Draco (`ile.glb`, environ 1,4 Mo).
+4. Dans le navigateur, `wwwroot/3d/ile3d.js` affiche chaque maillage avec sa texture cuite, sans calcul de lumière : la scène
+   ressemble au rendu de Blender et reste fluide sur téléphone. Three.js ajoute ce qui bouge : ciel, mer de nuages,
+   faisceau du phare, cristaux, glyphes, lucioles, fumée. Le défilement de la page fait avancer la caméra d'un chapitre à l'autre.
+
+Le site charge d'abord les atlas en 1024 pixels, puis les remplace par la haute définition (2048 sur mobile, 4096 sur ordinateur).
+Sans WebGL, la page affiche une image de l'île rendue par Blender (`assets/affiche.webp`) et tout le texte reste lisible.
+
+Régénérer l'île (il faut [Blender](https://www.blender.org/download/) 5.1 ; la cuisson prend une quinzaine de minutes avec une carte graphique) :
+
+```bash
+blender -b --factory-startup --python tools/blender/ile.py                                # construit, cuit et exporte
+blender -b --factory-startup --python tools/blender/ile.py -- --etapes construire,apercu --chapitre tous   # images d'aperçu
+blender -b --factory-startup --python tools/blender/ile.py -- --rapide                    # cuisson rapide pour essayer
+```
+
+Pour retoucher l'île à la main : ouvrir `tools/blender/out/ile.blend` dans Blender, modifier (déplacer un arbre, ajouter un
+objet dans une collection `atlas_…`, déplacer une clé de caméra), enregistrer, puis relancer seulement la cuisson :
+
+```bash
+blender -b tools/blender/out/ile.blend --python tools/blender/ile.py -- --etapes cuire
+```
+
+La cuisson n'est pas lancée par GitHub Actions (pas de Blender ni de carte graphique sur le serveur) : le modèle et les
+textures générés sont enregistrés dans le dépôt, sous `wwwroot/3d/assets/`.
 
 ## Lancer le site en local
 
