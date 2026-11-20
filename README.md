@@ -106,19 +106,29 @@ et `Phase: 2` réserve la question à la phase enragée du boss final. Les tests
 La version immersive (`/3d/`) suit la méthode des sites 3D « réalistes » : on ne demande pas au navigateur de calculer
 l'éclairage, on le **cuit** à l'avance.
 
-1. `tools/blender/ile.py` construit l'île dans Blender avec Python : relief et falaise, chemin, arche, atelier, cercle de
-   menhirs, socles des cristaux, phare, une centaine d'arbres, et le trajet de la caméra (objets vides `cam_XX` / `cible_XX`).
-2. Cycles calcule la lumière du coucher de soleil (soleil, ciel, ombres douces, lumière qui rebondit, fenêtres allumées)
-   et l'enregistre dans quatre **atlas** (terrain, roche, bâtiments, végétation), en WebP de 1024 à 4096 pixels.
-3. Le modèle part en glTF compressé avec Draco (`ile.glb`, environ 1,4 Mo).
+1. `tools/blender/ile.py` construit l'île dans Blender avec Python :
+   - le relief, la falaise en blocs et en colonnes, les racines qui pendent, des cristaux lumineux dans la roche ;
+   - le chemin et ses lanternes, un étang, le ruisseau et sa cascade qui tombe dans les nuages ;
+   - l'arche couverte de lierre, l'atelier, le cercle de menhirs, les socles des cristaux, le phare ;
+   - une centaine d'arbres (chênes, sapins, cyprès) et de buissons fleuris, faits de **cartes de feuilles** : des rectangles
+     découpés par une texture de feuilles que le script peint lui-même (`feuilles_*.webp`), comme dans les jeux vidéo ;
+   - le trajet de la caméra (objets vides `cam_XX` / `cible_XX`, avec leur champ de vision).
+2. Cycles calcule la lumière du coucher de soleil (soleil, ciel, ombres douces, lumière qui rebondit, fenêtres et lanternes
+   allumées) et l'enregistre dans quatre **atlas** (terrain, roche, bâtiments, végétation), en WebP de 1024 à 4096 pixels.
+3. Le modèle part en glTF compressé avec Draco (`ile.glb`).
 4. Dans le navigateur, `wwwroot/3d/ile3d.js` affiche chaque maillage avec sa texture cuite, sans calcul de lumière : la scène
-   ressemble au rendu de Blender et reste fluide sur téléphone. Three.js ajoute ce qui bouge : ciel, mer de nuages,
-   faisceau du phare, cristaux, glyphes, lucioles, fumée. Le défilement de la page fait avancer la caméra d'un chapitre à l'autre.
+   ressemble au rendu de Blender et reste fluide sur téléphone. Three.js ajoute ce qui vit :
+   - les feuilles et l'herbe qui bougent dans le vent. L'herbe prend sa couleur dans l'atlas du terrain, donc aussi ses ombres ;
+   - l'eau qui reflète le ciel, la cascade et sa brume, la mer de nuages ;
+   - une brume dorée du côté du soleil, des rayons de lumière ;
+   - le faisceau du phare, les cristaux, les glyphes, les lucioles, la fumée et les oiseaux.
+
+   Le défilement de la page fait avancer la caméra d'un chapitre à l'autre, jusqu'à une vue d'ensemble pour finir.
 
 Le site charge d'abord les atlas en 1024 pixels, puis les remplace par la haute définition (2048 sur mobile, 4096 sur ordinateur).
 Sans WebGL, la page affiche une image de l'île rendue par Blender (`assets/affiche.webp`) et tout le texte reste lisible.
 
-Régénérer l'île (il faut [Blender](https://www.blender.org/download/) 5.1 ; la cuisson prend une quinzaine de minutes avec une carte graphique) :
+Régénérer l'île (il faut [Blender](https://www.blender.org/download/) 5.1 ; la cuisson prend une vingtaine de minutes avec une carte graphique) :
 
 ```bash
 blender -b --factory-startup --python tools/blender/ile.py                                # construit, cuit et exporte
@@ -131,6 +141,7 @@ objet dans une collection `atlas_…`, déplacer une clé de caméra), enregistr
 
 ```bash
 blender -b tools/blender/out/ile.blend --python tools/blender/ile.py -- --etapes cuire
+blender -b tools/blender/out/ile_cuite.blend --python tools/blender/ile.py -- --etapes exporter   # réexporter sans recuire
 ```
 
 La cuisson n'est pas lancée par GitHub Actions (pas de Blender ni de carte graphique sur le serveur) : le modèle et les

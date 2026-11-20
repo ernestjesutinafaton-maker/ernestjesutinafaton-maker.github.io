@@ -11,20 +11,33 @@ Utilisation, depuis la racine du dépôt :
 
   blender -b --factory-startup --python tools/blender/ile.py -- [options]
 
-Étapes (--etapes, séparées par des virgules ; par défaut « construire,cuire ») :
+Étapes (--etapes, séparées par des virgules ; par défaut « construire,affiche,cuire ») :
   construire  modélise l'île et l'enregistre dans tools/blender/out/ile.blend
-  apercu      rend une image d'un chapitre (--chapitre N, ou « tous ») dans tools/blender/out/
+              (peint aussi la texture des feuilles : wwwroot/3d/assets/feuilles_*.webp)
+  apercu      rend une image d'un chapitre (--chapitre N, « tous », ou « cleN » pour une clé de caméra)
   affiche     rend l'image de secours du site (sans WebGL) : wwwroot/3d/assets/affiche.webp
-  cuire       cuit la lumière, exporte ile.glb et les atlas dans wwwroot/3d/assets/
+  cuire       cuit la lumière, enregistre les atlas puis exporte ile.glb dans wwwroot/3d/assets/
+  exporter    réexporte seulement ile.glb (à lancer sur tools/blender/out/ile_cuite.blend)
+
+Options : --echantillons N (qualité de la cuisson ou du rendu), --rapide (cuisson d'essai en 1024 px),
+          --largeur / --hauteur (taille des aperçus).
 
 Retoucher l'île à la main : ouvrir tools/blender/out/ile.blend, modifier, enregistrer, puis
   blender -b tools/blender/out/ile.blend --python tools/blender/ile.py -- --etapes cuire
 
 Conventions de la scène (à respecter si on ajoute des objets à la main) :
-  collections « atlas_<nom> »  objets cuits dans l'atlas <nom> (propriété « taille » = résolution)
+  collections « atlas_<nom> »  objets cuits dans l'atlas <nom> (propriété « taille » = résolution).
+                               Les objets d'un même « groupe » (propriété) sont fusionnés en un seul maillage.
   collection « vivant »        objets exportés sans cuisson : le site leur donne une matière animée
+                               (eau, cascade, cristaux, glyphes, anneau)
   collection « reperes »       objets vides exportés : trajet de la caméra (cam_XX, cible_XX), ancres
   collection « studio »        soleil et réglages, jamais exportés
+
+Organisation du fichier :
+  1. réglages, bruit et outils          5. bâtiments et objets du décor
+  2. plan de l'île (relief, eau)        6. végétation (arbres en cartes de feuilles)
+  3. texture des feuilles               7. eau, cascade, dessous de l'île
+  4. matières et constructeurs          8. caméra, studio, étapes (construire, aperçu, cuisson)
 """
 
 import bpy
@@ -34,6 +47,8 @@ import os
 import random
 import sys
 import time
+
+import numpy as np
 from mathutils import Matrix, Vector, noise
 from mathutils.bvhtree import BVHTree
 
@@ -49,6 +64,9 @@ SOLEIL_DIR = Vector((math.cos(SOLEIL_HAUTEUR) * math.cos(SOLEIL_AZIMUT),
                      math.cos(SOLEIL_HAUTEUR) * math.sin(SOLEIL_AZIMUT),
                      math.sin(SOLEIL_HAUTEUR)))
 
+# Les quatre tuiles de la texture des feuilles (2 × 2)
+TUILE_FEUILLU, TUILE_AIGUILLES, TUILE_CYPRES, TUILE_BUISSON = 0, 1, 2, 3
+
 
 def log(*a):
     print("[ile]", *a, flush=True)
@@ -56,7 +74,7 @@ def log(*a):
 
 def lire_options():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"etapes": "construire,cuire", "chapitre": "0", "echantillons": "", "rapide": False,
+    opts = {"etapes": "construire,affiche,cuire", "chapitre": "0", "echantillons": "", "rapide": False,
             "sortie": SORTIE_SITE, "largeur": "1280", "hauteur": "720"}
     i = 0
     while i < len(argv):
@@ -72,7 +90,7 @@ def lire_options():
 
 
 # =========================================================================
-#  BRUIT ET OUTILS
+#  1. BRUIT ET OUTILS
 # =========================================================================
 
 def n3(x, y, z):
@@ -95,6 +113,12 @@ def fbm3(p, octaves=4):
         a *= 0.5
         f *= 2.07
     return v * 1.9
+
+
+def crete(p):
+    """Bruit « en crêtes » (arêtes vives), entre 0 et 1 environ."""
+    v = noise.ridged_multi_fractal(p, 1.0, 2.0, 4, 1.0, 2.0)
+    return max(0.0, min(1.0, v / 2.2))
 
 
 def smoothstep(a, b, x):
@@ -120,23 +144,52 @@ def dist_polyligne(px, py, pts):
     return min(dist_segment(px, py, *pts[i], *pts[i + 1]) for i in range(len(pts) - 1))
 
 
+def reechantillonner(pts, pas):
+    """Points régulièrement espacés le long d'une polyligne, avec la distance parcourue."""
+    sortie = [(pts[0][0], pts[0][1], 0.0)]
+    s = 0.0
+    reste = 0.0
+    for i in range(len(pts) - 1):
+        ax, ay = pts[i]
+        bx, by = pts[i + 1]
+        l = math.hypot(bx - ax, by - ay)
+        d = pas - reste
+        while d <= l:
+            t = d / l
+            sortie.append((ax + (bx - ax) * t, ay + (by - ay) * t, s + d))
+            d += pas
+        reste = l - (d - pas)
+        s += l
+    return sortie
+
+
 # =========================================================================
-#  PLAN DE L'ÎLE
+#  2. PLAN DE L'ÎLE
 # =========================================================================
 
-# Lieux (x, y, rayon du replat). Le chemin de la caméra visite les lieux dans cet ordre.
+# Lieux (x, y, rayon du replat). La caméra visite les lieux des chapitres dans cet ordre.
 SITES = {
     "arche": (0.0, -22.0, 4.0),
     "atelier": (-14.0, -6.0, 6.0),
     "cercle": (2.0, 6.0, 7.8),
     "cristaux": (15.0, -6.0, 4.2),
     "phare": (23.5, 19.5, 4.0),
+    "etang": (-11.0, 7.0, 4.4),
 }
 
 CHEMIN = [(0.0, -27.0), (0.0, -22.0), (-1.5, -17.0), (-5.0, -12.0), (-9.0, -8.5), (-8.5, -3.0), (-5.0, 1.5),
           (-3.0, 5.0), (2.0, 6.0), (7.5, 3.5), (11.0, -1.5), (12.5, -5.0), (14.5, 1.0), (17.0, 8.0),
           (20.0, 14.5), (22.5, 18.0)]
 CHEMIN_ATELIER = [(-9.0, -8.5), (-11.2, -7.4)]
+
+# Le ruisseau part de l'étang et se jette dans le vide au sud-ouest (la cascade)
+RUISSEAU = [(-11.0, 7.0), (-13.8, 4.6), (-16.6, 1.6), (-19.4, -1.8), (-22.2, -5.4), (-25.0, -8.8),
+            (-27.8, -11.8), (-36.0, -19.0)]
+LARGEUR_RUISSEAU = 0.85
+RAYON_ETANG = 3.6
+
+# Obstacles où l'herbe ne pousse pas et où l'on ne plante rien (x, y, rayon)
+OBSTACLES = []
 
 
 def rayon_bord(theta):
@@ -163,7 +216,16 @@ def hauteur_brute(x, y):
 HAUTEUR_SITE = {}
 
 
-def hauteur(x, y, masque_chemin=0.0):
+def dist_ruisseau(x, y):
+    return dist_polyligne(x, y, RUISSEAU)
+
+
+def dist_etang(x, y):
+    cx, cy, _ = SITES["etang"]
+    return math.hypot(x - cx, y - cy) - 0.35 * n3(x * 0.5, y * 0.5, 3.3)
+
+
+def hauteur_sans_eau(x, y, masque_chemin=0.0):
     h = hauteur_brute(x, y)
     for nom, (cx, cy, rr) in SITES.items():
         d = math.hypot(x - cx, y - cy)
@@ -177,10 +239,31 @@ def hauteur(x, y, masque_chemin=0.0):
     return h
 
 
+def hauteur(x, y, masque_chemin=0.0):
+    """Hauteur du sol, avec le lit du ruisseau et le bassin de l'étang creusés."""
+    h = hauteur_sans_eau(x, y, masque_chemin)
+    d = dist_ruisseau(x, y)
+    h -= 0.7 * (1.0 - smoothstep(LARGEUR_RUISSEAU * 0.45, LARGEUR_RUISSEAU + 0.9, d))
+    de = dist_etang(x, y)
+    h -= 1.0 * (1.0 - smoothstep(RAYON_ETANG * 0.45, RAYON_ETANG + 0.9, de))
+    return h
+
+
 def masque_chemin(x, y):
     d = min(dist_polyligne(x, y, CHEMIN), dist_polyligne(x, y, CHEMIN_ATELIER))
     largeur = 0.85 + 0.25 * n3(x * 0.4, y * 0.4, 2.0)
     return 1.0 - smoothstep(largeur, largeur + 0.55, d)
+
+
+def masque_eau(x, y):
+    """Sol mouillé : bords du ruisseau et de l'étang."""
+    a = 1.0 - smoothstep(LARGEUR_RUISSEAU * 0.5, LARGEUR_RUISSEAU + 1.6, dist_ruisseau(x, y))
+    b = 1.0 - smoothstep(RAYON_ETANG - 0.6, RAYON_ETANG + 1.4, dist_etang(x, y))
+    return max(a, b)
+
+
+def sur_ile(x, y, marge=0.0):
+    return math.hypot(x, y) < rayon_bord(math.atan2(y, x)) - marge
 
 
 def preparer_plan():
@@ -189,7 +272,231 @@ def preparer_plan():
 
 
 # =========================================================================
-#  MATIÈRES (Cycles)
+#  3. TEXTURE DES FEUILLES (peinte avec numpy)
+# =========================================================================
+
+class Peintre:
+    """Peint des feuilles, des aiguilles et des fleurs dans une image RGBA (ligne 0 = haut de l'image)."""
+
+    def __init__(self, taille):
+        self.n = taille
+        self.img = np.zeros((taille, taille, 4), dtype=np.float32)
+
+    def _zone(self, x0, y0, x1, y1):
+        x0, y0 = max(0, int(math.floor(x0))), max(0, int(math.floor(y0)))
+        x1, y1 = min(self.n, int(math.ceil(x1)) + 1), min(self.n, int(math.ceil(y1)) + 1)
+        if x1 <= x0 or y1 <= y0:
+            return None
+        Y, X = np.mgrid[y0:y1, x0:x1].astype(np.float32)
+        return x0, y0, X + 0.5, Y + 0.5
+
+    def _poser(self, x0, y0, couleur, masque):
+        h, w = masque.shape
+        zone = self.img[y0:y0 + h, x0:x0 + w]
+        m = masque[..., None]
+        zone[..., :3] = zone[..., :3] * (1.0 - m) + couleur * m
+        zone[..., 3:] = zone[..., 3:] * (1.0 - m) + m
+
+    def feuille(self, cx, cy, ang, L, W, rgb, lumiere=1.0):
+        ca, sa = math.cos(ang), math.sin(ang)
+        mx, my = cx + ca * L * 0.5, cy + sa * L * 0.5
+        r = L * 0.5 + W + 3
+        z = self._zone(mx - r, my - r, mx + r, my + r)
+        if z is None:
+            return
+        x0, y0, X, Y = z
+        dx, dy = X - cx, Y - cy
+        u = dx * ca + dy * sa
+        v = -dx * sa + dy * ca
+        t = np.clip(u / L, 0.0, 1.0)
+        # sin(pi) vaut un tout petit nombre négatif en float32 : on borne avant la puissance (sinon NaN)
+        demi = 0.5 * W * np.power(np.clip(np.sin(np.pi * t), 0.0, 1.0), 0.68) * (1.0 - 0.22 * t)
+        d = demi - np.abs(v)
+        dedans = (u >= 0) & (u <= L)
+        masque = np.where(dedans, np.clip(d + 0.5, 0.0, 1.0), 0.0).astype(np.float32)
+        petiole = (u < 0) & (u > -L * 0.12) & (np.abs(v) < 1.0)
+        masque = np.maximum(masque, petiole.astype(np.float32))
+        if masque.max() <= 0:
+            return
+        bombe = np.clip(d / (demi + 1e-3), 0.0, 1.0) ** 0.5
+        ton = (0.66 + 0.34 * bombe) * (0.9 + 0.15 * t) * lumiere
+        ton = np.where((np.abs(v) < 1.1) & (t < 0.88) & (t > 0.02), ton * 1.16, ton)
+        ton = np.where(d < 1.3, ton * 0.8, ton)
+        coul = np.asarray(rgb, np.float32)[None, None, :] * ton[..., None]
+        self._poser(x0, y0, coul, masque)
+
+    def trait(self, xa, ya, xb, yb, ep, rgb_a, rgb_b=None):
+        rgb_b = rgb_a if rgb_b is None else rgb_b
+        z = self._zone(min(xa, xb) - ep, min(ya, yb) - ep, max(xa, xb) + ep, max(ya, yb) + ep)
+        if z is None:
+            return
+        x0, y0, X, Y = z
+        dx, dy = xb - xa, yb - ya
+        l2 = dx * dx + dy * dy + 1e-6
+        t = np.clip(((X - xa) * dx + (Y - ya) * dy) / l2, 0.0, 1.0)
+        qx, qy = xa + t * dx, ya + t * dy
+        d = np.hypot(X - qx, Y - qy)
+        largeur = ep * (1.0 - 0.6 * t)
+        masque = np.clip(largeur * 0.5 - d + 0.5, 0.0, 1.0)
+        if masque.max() <= 0:
+            return
+        a, b = np.asarray(rgb_a, np.float32), np.asarray(rgb_b, np.float32)
+        coul = a[None, None, :] * (1 - t[..., None]) + b[None, None, :] * t[..., None]
+        self._poser(x0, y0, coul, masque)
+
+    def ellipse(self, cx, cy, rx, ry, ang, rgb, relief=0.35):
+        r = max(rx, ry) + 2
+        z = self._zone(cx - r, cy - r, cx + r, cy + r)
+        if z is None:
+            return
+        x0, y0, X, Y = z
+        ca, sa = math.cos(ang), math.sin(ang)
+        dx, dy = X - cx, Y - cy
+        u = (dx * ca + dy * sa) / rx
+        v = (-dx * sa + dy * ca) / ry
+        q = np.sqrt(u * u + v * v)
+        masque = np.clip((1.0 - q) * min(rx, ry) + 0.5, 0.0, 1.0)
+        if masque.max() <= 0:
+            return
+        ton = 1.0 - relief * np.clip(q, 0, 1) ** 2 + 0.12 * np.clip(-v, 0, 1)
+        coul = np.asarray(rgb, np.float32)[None, None, :] * ton[..., None]
+        self._poser(x0, y0, coul, masque)
+
+
+def varier(rgb, rnd, ampl=0.12, chaleur=0.0):
+    k = 1.0 + rnd.uniform(-ampl, ampl)
+    r, g, b = rgb
+    return (min(1, r * k * (1 + chaleur)), min(1, g * k), min(1, b * k * (1 - chaleur * 0.5)))
+
+
+def tuile_feuillu(p, ox, oy, t, rnd):
+    c = (ox + t / 2, oy + t / 2)
+    # Brindilles depuis le centre, puis les feuilles du fond vers le devant
+    for k in range(9):
+        a = rnd.uniform(0, 2 * math.pi)
+        l = t * rnd.uniform(0.25, 0.42)
+        p.trait(c[0], c[1] + t * 0.12, c[0] + math.cos(a) * l, c[1] + math.sin(a) * l, 5.0, (0.2, 0.14, 0.09))
+    verts = [(0.2, 0.32, 0.1), (0.26, 0.38, 0.12), (0.32, 0.42, 0.13), (0.22, 0.36, 0.14), (0.36, 0.4, 0.12)]
+    for k in range(190):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = t * 0.42 * math.sqrt(rnd.uniform(0.02, 1.0))
+        x, y = c[0] + math.cos(a) * r, c[1] + math.sin(a) * r
+        ang = a + rnd.gauss(0, 0.7)
+        L = rnd.uniform(0.075, 0.13) * t
+        prof = 0.72 + 0.28 * min(1.0, r / (t * 0.42)) + (0.08 if k > 140 else 0.0)
+        chaleur = 0.25 if rnd.random() < 0.12 else 0.0
+        p.feuille(x, y, ang, L, L * rnd.uniform(0.4, 0.52), varier(rnd.choice(verts), rnd, 0.12, chaleur), prof)
+
+
+def tuile_aiguilles(p, ox, oy, t, rnd):
+    # Rameau de sapin : une tige du bas vers le haut, des rameaux, puis des aiguilles
+    base = (ox + t * 0.5, oy + t * 0.97)
+    haut = (ox + t * 0.5 + rnd.uniform(-0.05, 0.05) * t, oy + t * 0.06)
+    tiges = [(base, haut)]
+    for k in range(12):
+        s = 0.12 + 0.07 * k
+        px = lerp(base[0], haut[0], s)
+        py = lerp(base[1], haut[1], s)
+        cote = -1 if k % 2 else 1
+        l = t * (0.36 - 0.022 * k) * rnd.uniform(0.85, 1.1)
+        a = -math.pi / 2 + cote * rnd.uniform(0.75, 1.05)
+        tiges.append(((px, py), (px + math.cos(a) * l, py + math.sin(a) * l)))
+    for (xa, ya), (xb, yb) in tiges:
+        p.trait(xa, ya, xb, yb, 4.0, (0.16, 0.11, 0.07))
+    for (xa, ya), (xb, yb) in tiges:
+        l = math.hypot(xb - xa, yb - ya)
+        da = math.atan2(yb - ya, xb - xa)
+        n = int(l / 2.6)
+        for k in range(n):
+            s = (k + 0.5) / n
+            x, y = lerp(xa, xb, s), lerp(ya, yb, s)
+            for cote in (-1, 1):
+                a = da + cote * rnd.uniform(0.6, 1.0)
+                la = t * rnd.uniform(0.045, 0.075) * (1.0 - 0.35 * s)
+                ton = rnd.uniform(0.8, 1.15)
+                p.trait(x, y, x + math.cos(a) * la, y + math.sin(a) * la, 2.4,
+                        (0.07 * ton, 0.16 * ton, 0.09 * ton), (0.16 * ton, 0.3 * ton, 0.14 * ton))
+
+
+def tuile_cypres(p, ox, oy, t, rnd):
+    # Panache dense de petites écailles, plus clair vers le haut et vers la lumière
+    for k in range(1300):
+        u = rnd.gauss(0, 0.17)
+        v = rnd.uniform(0.04, 0.96)
+        lim = 0.36 * math.sin(math.pi * v) ** 0.6
+        if abs(u) > lim:
+            continue
+        x, y = ox + t * (0.5 + u), oy + t * v
+        r = t * rnd.uniform(0.012, 0.024)
+        ton = (0.75 + 0.35 * (1 - v)) * rnd.uniform(0.85, 1.15) * (0.8 + 0.4 * (1 - abs(u) / (lim + 1e-3)) * 0.5)
+        p.ellipse(x, y, r * 1.5, r, rnd.uniform(0, math.pi), (0.1 * ton, 0.21 * ton, 0.11 * ton), 0.5)
+
+
+def tuile_buisson(p, ox, oy, t, rnd):
+    c = (ox + t / 2, oy + t / 2)
+    verts = [(0.2, 0.33, 0.12), (0.25, 0.37, 0.12), (0.3, 0.4, 0.14)]
+    for k in range(420):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = t * 0.43 * math.sqrt(rnd.uniform(0.0, 1.0))
+        x, y = c[0] + math.cos(a) * r, c[1] + math.sin(a) * r
+        L = rnd.uniform(0.045, 0.075) * t
+        p.feuille(x, y, a + rnd.gauss(0, 0.9), L, L * rnd.uniform(0.55, 0.7), varier(rnd.choice(verts), rnd), 0.75 + 0.3 * r / (t * 0.43))
+    couleurs = [(0.95, 0.55, 0.75), (0.98, 0.92, 0.95), (0.8, 0.55, 0.95), (1.0, 0.8, 0.45)]
+    for k in range(46):
+        a = rnd.uniform(0, 2 * math.pi)
+        r = t * 0.4 * math.sqrt(rnd.uniform(0.05, 1.0))
+        x, y = c[0] + math.cos(a) * r, c[1] + math.sin(a) * r
+        coul = rnd.choice(couleurs)
+        rp = t * rnd.uniform(0.012, 0.018)
+        for s in range(5):
+            b = 2 * math.pi * s / 5 + rnd.uniform(0, 0.3)
+            p.ellipse(x + math.cos(b) * rp, y + math.sin(b) * rp, rp * 1.05, rp * 0.7, b, coul, 0.3)
+        p.ellipse(x, y, rp * 0.55, rp * 0.55, 0, (1.0, 0.8, 0.3), 0.2)
+
+
+def peindre_feuilles(sortie):
+    """Texture 2048 × 2048 en 4 tuiles. Renvoie l'image Blender (pour la cuisson)."""
+    t0 = time.time()
+    N = 2048
+    t = N // 2
+    p = Peintre(N)
+    rnd = random.Random(77)
+    # Tuile k : colonne k % 2, rangée k // 2 en partant du BAS de l'image (convention des UV de Blender)
+    for k, fn in ((TUILE_FEUILLU, tuile_feuillu), (TUILE_AIGUILLES, tuile_aiguilles),
+                  (TUILE_CYPRES, tuile_cypres), (TUILE_BUISSON, tuile_buisson)):
+        ox = (k % 2) * t
+        oy = (1 - k // 2) * t
+        fn(p, ox, oy, t, rnd)
+    img = np.nan_to_num(p.img, nan=0.0)
+    # Les pixels transparents prennent la couleur moyenne des feuilles : pas de liseré sombre à distance
+    a = img[..., 3]
+    moyenne = (img[..., :3] * a[..., None]).sum(axis=(0, 1)) / max(1.0, a.sum())
+    vide = a < 0.02
+    img[vide, :3] = moyenne
+    img[..., :3] = np.clip(img[..., :3], 0, 1)
+
+    def vers_blender(nom, tableau, taille):
+        im = bpy.data.images.new(nom, taille, taille, alpha=True)
+        im.pixels.foreach_set(np.flipud(tableau).ravel())
+        return im
+
+    os.makedirs(sortie, exist_ok=True)
+    grande = vers_blender("feuilles", img, N)
+    petite_np = img.reshape(N // 2, 2, N // 2, 2, 4).mean(axis=(1, 3))
+    petite = vers_blender("feuilles_1024", petite_np, N // 2)
+    for im, nom in ((grande, "feuilles_2048.webp"), (petite, "feuilles_1024.webp")):
+        im.file_format = "WEBP"
+        im.filepath_raw = os.path.join(sortie, nom)
+        im.save(quality=90)
+        log("texture :", os.path.relpath(im.filepath_raw, DEPOT), f"{os.path.getsize(im.filepath_raw) / 1024:.0f} Ko")
+    bpy.data.images.remove(petite)
+    grande.pack()
+    log(f"feuilles peintes en {time.time() - t0:.1f} s")
+    return grande
+
+
+# =========================================================================
+#  4. MATIÈRES (Cycles) ET CONSTRUCTEURS
 # =========================================================================
 
 class Noeuds:
@@ -333,17 +640,17 @@ def teinte(m):
     return m.attribut("teinte")
 
 
-def creer_matieres():
+def creer_matieres(image_feuilles):
     M = {}
 
-    # Herbe du dessus de l'île, avec le chemin de terre peint par l'attribut « chemin »
+    # Herbe du dessus de l'île : chemin de terre (attribut « chemin »), berges mouillées (attribut « eau »)
     m = Noeuds("herbe")
     grand = m.bruit(0.07, 5, 0.55)
     moyen = m.bruit(0.55, 6, 0.6)
     fin = m.bruit(6.0, 3, 0.7)
-    herbe = m.rampe(grand, [(0.25, (0.065, 0.105, 0.022)), (0.5, (0.1, 0.15, 0.032)),
-                            (0.7, (0.15, 0.17, 0.04)), (0.85, (0.23, 0.2, 0.07))])
-    herbe = m.melange(m.plage(moyen, 0.3, 0.75, 0.0, 0.45), herbe, (0.03, 0.06, 0.015), "MULTIPLY")
+    herbe = m.rampe(grand, [(0.25, (0.07, 0.11, 0.024)), (0.5, (0.105, 0.155, 0.034)),
+                            (0.7, (0.16, 0.18, 0.045)), (0.85, (0.24, 0.21, 0.075))])
+    herbe = m.melange(m.plage(moyen, 0.3, 0.75, 0.0, 0.4), herbe, (0.035, 0.065, 0.016), "MULTIPLY")
     fleurs = m.plage(m.voronoi(2.2, trait="F1"), 0.0, 0.06, 1.0, 0.0)
     fleurs = m.math("MULTIPLY", fleurs, m.plage(m.bruit(0.25, 2), 0.55, 0.7))
     herbe = m.melange(m.math("MULTIPLY", fleurs, 0.7), herbe, (0.6, 0.45, 0.2))
@@ -351,21 +658,25 @@ def creer_matieres():
     cailloux = m.plage(m.voronoi(9.0), 0.0, 0.18, 1.0, 0.0)
     terre = m.melange(m.math("MULTIPLY", cailloux, 0.5), terre, (0.22, 0.2, 0.17))
     bord = m.plage(m.math("ADD", m.attribut("chemin", "Factor"), m.math("MULTIPLY", fin, 0.4)), 0.55, 0.85)
-    m.couleur(m.melange(bord, herbe, terre))
+    sol = m.melange(bord, herbe, terre)
+    # Berges : boue sombre et galets
+    eau = m.plage(m.math("ADD", m.attribut("eau", "Factor"), m.math("MULTIPLY", fin, 0.3)), 0.35, 0.75)
+    galets = m.plage(m.voronoi(5.0), 0.0, 0.3, 1.0, 0.0)
+    berge = m.melange(m.math("MULTIPLY", galets, 0.6), (0.035, 0.03, 0.025), (0.16, 0.15, 0.13))
+    m.couleur(m.melange(eau, sol, berge))
     m.rugosite(0.95)
     m.relief(m.math("ADD", m.math("MULTIPLY", fin, 0.6), m.math("MULTIPLY", cailloux, bord)), 0.35, 0.04)
     M["herbe"] = m.mat
 
-    # Roche de la falaise : strates, fissures, mousse sur les faces tournées vers le ciel
+    # Roche de la falaise : strates, fissures par endroits, mousse sur les faces tournées vers le ciel
     m = Noeuds("roche")
     strates = m.vague(0.6, 16.0, "Z", m.echelle_vec(0.05, 0.05, 0.45), 6)
     var = m.math("ADD", m.math("MULTIPLY", m.bruit(0.35, 5, 0.6), 0.6), m.math("MULTIPLY", m.bruit(0.07, 3, 0.5), 0.4))
-    roche = m.rampe(m.math("ADD", m.math("MULTIPLY", strates, 0.18), m.math("MULTIPLY", var, 0.82)),
+    roche = m.rampe(m.math("ADD", m.math("MULTIPLY", strates, 0.07), m.math("MULTIPLY", var, 0.93)),
                     [(0.2, (0.05, 0.04, 0.035)), (0.45, (0.12, 0.095, 0.075)),
                      (0.7, (0.2, 0.16, 0.12)), (0.9, (0.27, 0.22, 0.17))])
-    # Fissures : seulement par endroits (masque de bruit), sinon on croirait un mur de pierres
     fissures = m.plage(m.voronoi(0.6, trait="DISTANCE_TO_EDGE"), 0.0, 0.03, 0.0, 1.0)
-    zones = m.plage(m.bruit(0.45, 3), 0.52, 0.66)
+    zones = m.plage(m.bruit(0.3, 3), 0.6, 0.72)
     roche = m.melange(m.math("MULTIPLY", m.math("SUBTRACT", 1.0, fissures), m.math("MULTIPLY", zones, 0.75)),
                       roche, (0.02, 0.018, 0.016))
     fissures = m.math("MULTIPLY", fissures, 0.35)
@@ -411,6 +722,8 @@ def creer_matieres():
     var = m.bruit(3.0, 4)
     toit = m.rampe(var, [(0.3, (0.11, 0.035, 0.022)), (0.7, (0.2, 0.065, 0.035))])
     toit = m.melange(1.0, toit, couleur, "MULTIPLY")
+    mousse = m.math("MULTIPLY", m.plage(m.bruit(1.5, 4), 0.55, 0.7), 0.6)
+    toit = m.melange(mousse, toit, (0.06, 0.08, 0.025))
     m.couleur(m.melange(1.0, toit, teinte(m), "MULTIPLY"))
     m.rugosite(0.75)
     m.relief(fac, 0.5, 0.03)
@@ -441,50 +754,59 @@ def creer_matieres():
     m.rugosite(0.5)
     M["cuivre"] = m.mat
 
-    # Fenêtres et lanternes allumées : leur lumière orangée est cuite sur les murs autour
+    # Fenêtres et lanternes allumées : leur lumière orangée est cuite sur ce qui les entoure
     m = Noeuds("lumiere")
     m.couleur((1.0, 0.6, 0.3))
     m.emission((1.0, 0.52, 0.2), 7.0)
     M["lumiere"] = m.mat
+
+    m = Noeuds("lanterne")
+    m.couleur((1.0, 0.65, 0.35))
+    m.emission((1.0, 0.55, 0.22), 14.0)
+    M["lanterne"] = m.mat
 
     m = Noeuds("lumiere_phare")
     m.couleur((1.0, 0.85, 0.6))
     m.emission((1.0, 0.75, 0.42), 16.0)
     M["lumiere_phare"] = m.mat
 
-    # Feuillage : une teinte par arbre (attribut « teinte »), des touffes de feuilles en relief
-    m = Noeuds("feuillage")
-    var = m.bruit(0.8, 4)
-    touffes = m.voronoi(7.0)
-    f = m.rampe(var, [(0.3, (0.55, 0.55, 0.5)), (0.7, (1.0, 1.0, 0.92))])
-    f = m.melange(1.0, f, teinte(m), "MULTIPLY")
-    f = m.melange(m.plage(touffes, 0.0, 0.5, 0.55, 0.0), f, (0.0, 0.0, 0.0))
-    m.couleur(f)
-    m.rugosite(0.8)
-    m.relief(m.math("SUBTRACT", 1.0, touffes), 0.55, 0.12)
-    M["feuillage"] = m.mat
-
     m = Noeuds("ecorce")
     stries = m.bruit(1.0, 6, 0.6, m.echelle_vec(14.0, 14.0, 1.2), 1.5)
-    m.couleur(m.rampe(stries, [(0.3, (0.03, 0.022, 0.016)), (0.7, (0.09, 0.07, 0.05))]))
+    m.couleur(m.melange(1.0, m.rampe(stries, [(0.3, (0.035, 0.026, 0.02)), (0.7, (0.1, 0.078, 0.058))]),
+                        teinte(m), "MULTIPLY"))
     m.rugosite(0.9)
     m.relief(stries, 0.5, 0.03)
     M["ecorce"] = m.mat
 
+    # Feuilles : cartes découpées par la texture peinte (UV « feuille »), teintées arbre par arbre
+    m = Noeuds("feuilles")
+    uv = m.nt.nodes.new("ShaderNodeUVMap")
+    uv.uv_map = "feuille"
+    tex = m.nt.nodes.new("ShaderNodeTexImage")
+    tex.image = image_feuilles
+    tex.interpolation = "Linear"
+    m.lien(uv.outputs["UV"], tex.inputs["Vector"])
+    m.couleur(m.melange(1.0, tex.outputs["Color"], teinte(m), "MULTIPLY"))
+    m.lien(tex.outputs["Alpha"], m.bsdf.inputs["Alpha"])
+    m.rugosite(0.75)
+    m.bsdf.inputs["Specular IOR Level"].default_value = 0.25
+    M["feuilles"] = m.mat
+
     # Objets vivants : rendus par le site, leurs matières ici servent seulement à éclairer la cuisson
     for nom, c, force in (("glyphe", (0.55, 0.32, 1.0), 6.0), ("anneau", (0.85, 0.3, 0.95), 2.5),
                           ("cristal_vert", (0.25, 1.0, 0.55), 5.0), ("cristal_violet", (0.6, 0.35, 1.0), 5.0),
-                          ("cristal_rose", (1.0, 0.35, 0.75), 5.0)):
+                          ("cristal_rose", (1.0, 0.35, 0.75), 5.0), ("cristal_roche", (0.45, 0.6, 1.0), 9.0)):
         m = Noeuds(nom)
         m.couleur(c)
         m.emission(c, force)
         M[nom] = m.mat
+
+    m = Noeuds("eau")
+    m.couleur((0.05, 0.08, 0.12))
+    m.rugosite(0.05)
+    M["eau"] = m.mat
     return M
 
-
-# =========================================================================
-#  CONSTRUCTEUR DE MAILLAGES
-# =========================================================================
 
 def collection(nom, parent=None, taille=None):
     c = bpy.data.collections.get(nom) or bpy.data.collections.new(nom)
@@ -496,7 +818,7 @@ def collection(nom, parent=None, taille=None):
 
 
 class Construction:
-    """Accumule des pièces (boîtes, cylindres, sphères bosselées) dans un seul maillage."""
+    """Accumule des pièces (boîtes, cylindres, tubes, sphères bosselées) dans un seul maillage."""
 
     def __init__(self, nom, coll, M):
         self.nom, self.coll, self.M = nom, coll, M
@@ -569,6 +891,35 @@ class Construction:
         self._finir(verts, mat)
         return verts
 
+    def tube(self, mat, points, rayons, cotes=8, couleur=(1, 1, 1), fermer=True):
+        """Tube le long d'une suite de points (tronc, branche, racine), d'épaisseur variable."""
+        anneaux = []
+        n = len(points)
+        normale = None
+        for i, p in enumerate(points):
+            t = (points[min(i + 1, n - 1)] - points[max(i - 1, 0)]).normalized()
+            if normale is None:
+                normale = t.orthogonal().normalized()
+            else:
+                normale = (normale - t * normale.dot(t)).normalized()
+            b = t.cross(normale)
+            r = rayons[i]
+            anneaux.append([self.bm.verts.new(p + (normale * math.cos(2 * math.pi * k / cotes)
+                                                   + b * math.sin(2 * math.pi * k / cotes)) * r) for k in range(cotes)])
+        verts = [v for a in anneaux for v in a]
+        for i in range(n - 1):
+            for k in range(cotes):
+                a, b = anneaux[i][k], anneaux[i][(k + 1) % cotes]
+                c, d = anneaux[i + 1][(k + 1) % cotes], anneaux[i + 1][k]
+                self.bm.faces.new((a, b, c, d))
+        if fermer:
+            bout = self.bm.verts.new(points[-1] + (points[-1] - points[-2]).normalized() * rayons[-1] * 0.5)
+            verts.append(bout)
+            for k in range(cotes):
+                self.bm.faces.new((anneaux[-1][k], anneaux[-1][(k + 1) % cotes], bout))
+        self._finir(verts, mat, couleur)
+        return verts
+
     def demi_sphere(self, mat, m, rayon, couleur=(1, 1, 1)):
         r = bmesh.ops.create_uvsphere(self.bm, u_segments=20, v_segments=10, radius=rayon, matrix=m)
         centre = m.to_translation()
@@ -601,8 +952,9 @@ class Construction:
                 continue
             v.co += d.normalized() * amplitude * fbm3(v.co * frequence + Vector((graine, 0, 0)), 3)
 
-    def objet(self, **props):
-        bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
+    def objet(self, recalculer=True, **props):
+        if recalculer:
+            bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
         me = bpy.data.meshes.new(self.nom)
         self.bm.to_mesh(me)
         self.bm.free()
@@ -612,6 +964,62 @@ class Construction:
         self.coll.objects.link(ob)
         for k, v in props.items():
             ob[k] = v
+        return ob
+
+
+class Feuillage:
+    """Cartes de feuilles : des rectangles pliés en V, découpés par la texture des feuilles.
+    Les normales sont orientées depuis le centre de la couronne : l'arbre s'éclaire comme un volume."""
+
+    def __init__(self):
+        self.verts, self.faces, self.uv = [], [], []
+        self.normales, self.teintes, self.balance = [], [], []
+        self.nb = 0
+
+    def carte(self, centre, normale, haut, largeur, hauteur, tuile, teinte, coeur, poids=0.5, phase=0.0, pli=0.22):
+        n = normale.normalized()
+        y = (haut - n * haut.dot(n))
+        if y.length < 1e-4:
+            y = n.orthogonal()
+        y.normalize()
+        x = y.cross(n).normalized()
+        col, rang = tuile % 2, tuile // 2
+        e = 0.004
+        u0, u1 = col * 0.5 + e, col * 0.5 + 0.5 - e
+        v0, v1 = rang * 0.5 + e, rang * 0.5 + 0.5 - e
+        i0 = len(self.verts)
+        for k, sy in enumerate((-0.5, 0.5)):
+            for j, sx in enumerate((-0.5, 0.0, 0.5)):
+                p = centre + x * (sx * largeur) + y * (sy * hauteur) + n * (pli * largeur * 0.5 if sx == 0.0 else 0.0)
+                self.verts.append(tuple(p))
+                vers_coeur = (p - coeur)
+                vers_coeur = vers_coeur.normalized() if vers_coeur.length > 1e-4 else n
+                self.normales.append(tuple((n * 0.3 + vers_coeur * 0.7).normalized()))
+                self.teintes.append((*teinte, 1.0))
+                self.balance.append((poids, phase, 0.0, 1.0))
+        for a, b, c, d in ((0, 1, 4, 3), (1, 2, 5, 4)):
+            self.faces.append((i0 + a, i0 + b, i0 + c, i0 + d))
+        uvs = {0: (u0, v0), 1: ((u0 + u1) / 2, v0), 2: (u1, v0), 3: (u0, v1), 4: ((u0 + u1) / 2, v1), 5: (u1, v1)}
+        for a, b, c, d in ((0, 1, 4, 3), (1, 2, 5, 4)):
+            self.uv.extend([uvs[a], uvs[b], uvs[c], uvs[d]])
+        self.nb += 1
+
+    def objet(self, coll, M, nom="feuillage", **props):
+        me = bpy.data.meshes.new(nom)
+        me.from_pydata(self.verts, [], self.faces)
+        couche = me.uv_layers.new(name="feuille")
+        couche.data.foreach_set("uv", [c for uv in self.uv for c in uv])
+        for nom_attr, donnees in (("teinte", self.teintes), ("balancement", self.balance)):
+            a = me.color_attributes.new(nom_attr, "FLOAT_COLOR", "POINT")
+            a.data.foreach_set("color", [c for t in donnees for c in t])
+        me.materials.append(M["feuilles"])
+        me.shade_smooth()
+        me.normals_split_custom_set_from_vertices(self.normales)
+        ob = bpy.data.objects.new(nom, me)
+        coll.objects.link(ob)
+        for k, v in props.items():
+            ob[k] = v
+        log(f"feuillage : {self.nb} cartes")
         return ob
 
 
@@ -629,23 +1037,46 @@ def vers(dx, dy):
     return math.atan2(dx, -dy)
 
 
+def ancre(coll, nom, pos):
+    e = bpy.data.objects.new(nom, None)
+    e.empty_display_type = "SPHERE"
+    e.empty_display_size = 0.3
+    e.location = pos
+    coll.objects.link(e)
+    return e
+
+
+def lierre(feuillage, centre, normale, rnd, nombre=6, etendue=0.8, taille=0.45):
+    """Quelques petites cartes de feuilles plaquées contre un mur ou une pierre."""
+    teinte = (lerp(0.75, 0.95, rnd.random()), lerp(0.85, 1.0, rnd.random()), lerp(0.6, 0.8, rnd.random()))
+    for k in range(nombre):
+        off = Vector((rnd.uniform(-1, 1), rnd.uniform(-1, 1), rnd.uniform(-1, 1))) * etendue
+        off -= normale * off.dot(normale)
+        c = centre + off + normale * 0.04
+        n = (normale + Vector((rnd.gauss(0, 0.35), rnd.gauss(0, 0.35), rnd.gauss(0, 0.35)))).normalized()
+        feuillage.carte(c, n, Vector((0, 0, 1)), taille, taille, TUILE_FEUILLU, teinte, c - normale, 0.1, rnd.random(), 0.15)
+
+
 # =========================================================================
-#  L'ÎLE
+#  5. L'ÎLE, LES BÂTIMENTS ET LE DÉCOR
 # =========================================================================
 
-NB_ANNEAUX, NB_SECTEURS, NB_ETAGES = 104, 384, 64
+NB_ANNEAUX, NB_SECTEURS, NB_ETAGES = 120, 448, 72
 
 
 def construire_ile(M, c_terrain, c_roche):
     t0 = time.time()
     # --- Dessus : grille polaire, du centre jusqu'au bord, puis une lèvre d'herbe qui retombe
-    verts, masque, faces = [], [], []
-    verts.append((0.0, 0.0, hauteur(0, 0, masque_chemin(0, 0))))
-    masque.append(masque_chemin(0, 0))
-    bords = []
-    for i in range(NB_SECTEURS):
-        th = 2 * math.pi * i / NB_SECTEURS
-        bords.append(rayon_bord(th))
+    verts, masques, eaux, faces = [], [], [], []
+    bords = [rayon_bord(2 * math.pi * i / NB_SECTEURS) for i in range(NB_SECTEURS)]
+
+    def ajouter(x, y, z, mc, me):
+        verts.append((x, y, z))
+        masques.append(mc)
+        eaux.append(me)
+
+    mc = masque_chemin(0, 0)
+    ajouter(0.0, 0.0, hauteur(0, 0, mc), mc, masque_eau(0, 0))
     for j in range(1, NB_ANNEAUX + 2):
         for i in range(NB_SECTEURS):
             th = 2 * math.pi * i / NB_SECTEURS
@@ -653,14 +1084,13 @@ def construire_ile(M, c_terrain, c_roche):
                 rr = bords[i] * (j / NB_ANNEAUX) ** 0.92
                 x, y = rr * math.cos(th), rr * math.sin(th)
                 mc = masque_chemin(x, y)
-                z = hauteur(x, y, mc)
+                ajouter(x, y, hauteur(x, y, mc), mc, masque_eau(x, y))
             else:
                 rr = bords[i] + 0.35
                 x, y = rr * math.cos(th), rr * math.sin(th)
-                mc = 0.0
-                z = hauteur(bords[i] * math.cos(th), bords[i] * math.sin(th)) - 0.55
-            verts.append((x, y, z))
-            masque.append(mc)
+                ajouter(x, y, hauteur(bords[i] * math.cos(th), bords[i] * math.sin(th)) - 0.55, 0.0,
+                        masque_eau(bords[i] * math.cos(th), bords[i] * math.sin(th)))
+
     def idx(j, i):
         return 0 if j == 0 else 1 + (j - 1) * NB_SECTEURS + (i % NB_SECTEURS)
     for i in range(NB_SECTEURS):
@@ -671,19 +1101,19 @@ def construire_ile(M, c_terrain, c_roche):
     me = bpy.data.meshes.new("ile_dessus")
     me.from_pydata(verts, [], faces)
     me.materials.append(M["herbe"])
-    attr = me.color_attributes.new("chemin", "FLOAT_COLOR", "POINT")
-    attr.data.foreach_set("color", [c for mval in masque for c in (mval, mval, mval, 1.0)])
-    attr = me.color_attributes.new("teinte", "FLOAT_COLOR", "POINT")
-    attr.data.foreach_set("color", [1.0] * (4 * len(verts)))
+    for nom, valeurs in (("chemin", masques), ("eau", eaux), ("teinte", [1.0] * len(verts))):
+        attr = me.color_attributes.new(nom, "FLOAT_COLOR", "POINT")
+        attr.data.foreach_set("color", [c for v in valeurs for c in (v, v, v, 1.0)])
     me.shade_smooth()
     ob = bpy.data.objects.new("ile_dessus", me)
+    ob["terrain"] = 1
     c_terrain.objects.link(ob)
     log(f"dessus de l'île : {len(verts)} sommets ({time.time() - t0:.1f} s)")
 
-    # --- Dessous : falaise puis rocher qui s'effile vers une pointe, en strates
+    # --- Dessous : falaise puis rocher qui s'effile vers une pointe, en blocs, colonnes et strates
     t0 = time.time()
     verts, faces = [], []
-    pointe = Vector((3.0, -2.0, -34.0))
+    pointe = Vector((3.0, -2.0, -36.0))
     for k in range(NB_ETAGES):
         t = k / NB_ETAGES
         for i in range(NB_SECTEURS):
@@ -695,16 +1125,17 @@ def construire_ile(M, c_terrain, c_roche):
                 z = z_bord - 0.15 - t / 0.09 * 3.05
             else:
                 u = (t - 0.09) / 0.91
-                f = 0.98 * (1.0 - u) ** 0.72
-                z = z_bord - 3.2 - u ** 0.95 * (abs(pointe.z) + z_bord - 3.2 + 4 * n3(math.cos(th), math.sin(th), 3.0))
+                f = 0.98 * (1.0 - u) ** 0.7
+                z = z_bord - 3.2 - u ** 0.92 * (abs(pointe.z) + z_bord - 3.2 + 4 * n3(math.cos(th), math.sin(th), 3.0))
             cx, cy = lerp(0, pointe.x, t * t), lerp(0, pointe.y, t * t)
             x, y = cx + rb * f * math.cos(th), cy + rb * f * math.sin(th)
             p = Vector((x, y, z))
-            ampl = 0.2 + 3.3 * smoothstep(0.0, 0.6, t) * (1.0 - smoothstep(0.85, 1.0, t))
             radial = Vector((math.cos(th), math.sin(th), 0.0))
-            depl = ampl * fbm3(p * Vector((0.09, 0.09, 0.16)), 5)
-            depl += 0.28 * math.sin(z * 1.7 + 4.0 * n3(x * 0.08, y * 0.08, 7.0)) * smoothstep(0.02, 0.2, t)
-            depl += 0.6 * abs(n3(x * 0.35, y * 0.35, z * 0.5)) * smoothstep(0.0, 0.1, t)
+            fort = smoothstep(0.0, 0.5, t) * (1.0 - smoothstep(0.88, 1.0, t))
+            depl = (0.2 + 2.6 * fort) * fbm3(p * Vector((0.075, 0.075, 0.12)), 5)
+            depl += 1.6 * fort * (crete(p * Vector((0.09, 0.09, 0.05))) - 0.45)
+            depl += 0.7 * n3(math.cos(th) * 11.0, math.sin(th) * 11.0, z * 0.04) * smoothstep(0.02, 0.2, t)
+            depl += 0.5 * abs(n3(x * 0.35, y * 0.35, z * 0.5)) * smoothstep(0.0, 0.1, t)
             p += radial * depl
             verts.append(tuple(p))
     verts.append(tuple(pointe))
@@ -723,8 +1154,69 @@ def construire_ile(M, c_terrain, c_roche):
     attr.data.foreach_set("color", [1.0] * (4 * len(verts)))
     me.shade_smooth()
     ob = bpy.data.objects.new("ile_roche", me)
+    ob["groupe"] = "roche"
     c_roche.objects.link(ob)
     log(f"dessous de l'île : {len(verts)} sommets ({time.time() - t0:.1f} s)")
+    return BVHTree.FromPolygons([Vector(v) for v in verts], faces), bords
+
+
+def racines_et_cristaux(M, c_roche, vivant, reperes, arbre_roche, bords, rnd):
+    """Racines qui pendent sous la lèvre d'herbe, et grappes de cristaux lumineux dans la roche."""
+    c = Construction("racines", c_roche, M)
+    for k in range(80):
+        i = rnd.randrange(len(bords))
+        th = 2 * math.pi * i / len(bords)
+        rb = bords[i]
+        if dist_ruisseau(rb * math.cos(th), rb * math.sin(th)) < 3.0:
+            continue
+        radial = Vector((math.cos(th), math.sin(th), 0))
+        depart = Vector((rb * math.cos(th), rb * math.sin(th), hauteur(rb * math.cos(th), rb * math.sin(th)) - 0.55)) - radial * 0.2
+        longueur = rnd.uniform(1.2, 5.5)
+        pts, rayons = [], []
+        n = 9
+        for s in range(n):
+            u = s / (n - 1)
+            p = depart + radial * (0.35 * math.sin(math.pi * u * 0.8) + 0.15 * u) + Vector((0, 0, -longueur * u))
+            p += Vector((n3(k, u * 3, 1.0), n3(k, u * 3, 5.0), 0)) * 0.25 * u
+            pts.append(p)
+            rayons.append(lerp(rnd.uniform(0.04, 0.08), 0.008, u))
+        c.tube("ecorce", pts, rayons, 5, (0.8, 0.75, 0.7))
+        if rnd.random() < 0.4:
+            # petite ramification
+            a = pts[3]
+            b = a + radial * 0.3 + Vector((rnd.uniform(-0.3, 0.3), rnd.uniform(-0.3, 0.3), -longueur * 0.4))
+            c.tube("ecorce", [a, a.lerp(b, 0.5) + radial * 0.1, b], [rayons[3] * 0.7, rayons[3] * 0.4, 0.006], 4)
+    c.objet(groupe="roche")
+
+    # Cristaux : on vise la roche depuis l'extérieur pour poser chaque grappe sur sa surface
+    g = Construction("vivant_cristaux_roche", vivant, M)
+    nb = 0
+    for k in range(9):
+        th = 2 * math.pi * (k + rnd.uniform(0.2, 0.8)) / 9
+        z = rnd.uniform(-20.0, -6.0)
+        origine = Vector((70 * math.cos(th), 70 * math.sin(th), z))
+        cible = Vector((2.0, -1.0, z - 2.0))
+        hit, nrm, _, _ = arbre_roche.ray_cast(origine, (cible - origine).normalized(), 200.0)
+        if hit is None:
+            continue
+        axe0 = (nrm + Vector((0, 0, -0.5))).normalized()
+        for s in range(rnd.randint(4, 7)):
+            axe = (axe0 + Vector((rnd.gauss(0, 0.35), rnd.gauss(0, 0.35), rnd.gauss(0, 0.3)))).normalized()
+            longueur = rnd.uniform(0.5, 1.7) * (1.4 if s == 0 else 1.0)
+            rayon = longueur * rnd.uniform(0.11, 0.16)
+            base = hit - nrm * 0.15 + Vector((rnd.gauss(0, 0.25), rnd.gauss(0, 0.25), rnd.gauss(0, 0.2)))
+            q = axe.to_track_quat("Z", "Y").to_matrix().to_4x4()
+            m = Matrix.Translation(base + axe * longueur * 0.5) @ q
+            v = g.cylindre("cristal_roche", m, rayon, rayon * 0.85, longueur, 6, lisse=False)
+            # pointe
+            haut = [vv for vv in v if (vv.co - (base + axe * longueur * 0.5)).dot(axe) > 0]
+            centre_haut = sum((vv.co for vv in haut), Vector()) / max(1, len(haut))
+            for vv in haut:
+                vv.co = centre_haut.lerp(vv.co, 0.35) + axe * rayon * 1.2
+        ancre(reperes, f"cristal_roche_{nb + 1}", hit + nrm * 0.6)
+        nb += 1
+    g.objet(vivant="cristal_roche")
+    log(f"cristaux sous l'île : {nb} grappes")
 
 
 def rochers_flottants(M, c_roche, rnd):
@@ -735,22 +1227,23 @@ def rochers_flottants(M, c_roche, rnd):
         centre = Vector((x, y, z))
         m = Matrix.Translation(centre) @ Matrix.Diagonal((1.0, 1.0, 0.75, 1.0))
         v = c.sphere("roche", m, r, 3)
-        # Dessus aplati, dessous en pointe
         for vv in v:
             d = vv.co - centre
             if d.z > 0:
-                vv.co.z = centre.z + d.z * 0.35
+                vv.co.z = centre.z + d.z * 0.3
             else:
                 vv.co.z = centre.z + d.z * (1.6 + 0.6 * rnd.random())
         c.bosseler(v, centre, r * 0.22, 0.9 / r, rnd.random() * 50)
+        if r > 2.3:
+            # Un tapis d'herbe sur le dessus des plus gros
+            dessus = max(vv.co.z for vv in v)
+            vh = c.cylindre("herbe", Matrix.Translation(centre + Vector((0, 0, dessus - centre.z - 0.05))),
+                            r * 0.92, r * 0.8, 0.22, 24)
+            c.bosseler(vh, centre + Vector((0, 0, dessus - centre.z)), 0.08, 1.2)
         c.objet(mobile=1, flotte=round(0.25 + rnd.random() * 0.35, 2))
 
 
-# =========================================================================
-#  BÂTIMENTS
-# =========================================================================
-
-def construire_arche(M, coll, vivant, rnd):
+def construire_arche(M, coll, reperes, feuillage, rnd):
     x, y, _ = SITES["arche"]
     z0 = HAUTEUR_SITE["arche"]
     L = repere(x, y, z0, 0.0)
@@ -766,6 +1259,11 @@ def construire_arche(M, coll, vivant, rnd):
                                           rz=rnd.uniform(-0.05, 0.05)), (0.86, 0.86, h - 0.03), 0.045, (t, t, t * 0.97))
             zb += h
         c.boite("pierre", orientation(L, px, 0, zb + 0.13), (1.05, 1.0, 0.26), 0.04)
+        OBSTACLES.append(((L @ Vector((px, 0, 0))).x, (L @ Vector((px, 0, 0))).y, 0.85))
+        # Lierre qui grimpe sur le pilier
+        for hz in (0.8, 1.6, 2.3):
+            lierre(feuillage, L @ Vector((px + cote * 0.45, -0.2, hz)), (L.to_3x3() @ Vector((cote, 0, 0))).normalized(), rnd, 5, 0.35, 0.42)
+        lierre(feuillage, L @ Vector((px, -0.45, 1.0)), (L.to_3x3() @ Vector((0, -1, 0))).normalized(), rnd, 4, 0.35, 0.4)
         # Muret en ruine qui prolonge l'arche
         for k in range(4):
             lx = px + cote * (1.0 + k * 0.8)
@@ -775,6 +1273,8 @@ def construire_arche(M, coll, vivant, rnd):
                 c.boite("pierre", orientation(L, lx + rnd.uniform(-0.05, 0.05), rnd.uniform(-0.06, 0.06),
                                               0.0 + etage * 0.4 + 0.2, rz=rnd.uniform(-0.08, 0.08)),
                         (0.76, 0.6, 0.38), 0.05, (t, t * 0.98, t * 0.95))
+            OBSTACLES.append(((L @ Vector((lx, 0, 0))).x, (L @ Vector((lx, 0, 0))).y, 0.5))
+        lierre(feuillage, L @ Vector((px + cote * 1.8, -0.32, 0.6)), (L.to_3x3() @ Vector((0, -1, 0))).normalized(), rnd, 6, 0.6, 0.45)
     zc = 3.66
     n = 9
     for i in range(n):
@@ -787,24 +1287,27 @@ def construire_arche(M, coll, vivant, rnd):
         R = Matrix((X, Y, Z)).transposed().to_4x4()
         m = L @ Matrix.Translation((rr * math.cos(a), 0, zc + rr * math.sin(a) + (0.05 if cle else 0))) @ R
         c.boite("pierre", m, (0.66, 0.92 if cle else 0.86, 0.72 if cle else 0.6), 0.04, (0.95, 0.93, 0.9))
+    lierre(feuillage, L @ Vector((-1.6, -0.45, 5.0)), Vector((0, -1, 0.3)).normalized(), rnd, 7, 0.5, 0.45)
     # Lanternes de part et d'autre
     for cote in (-1, 1):
         lx, ly = cote * 3.3, -1.3
         c.cylindre("bois_sombre", orientation(L, lx, ly, 0.75), 0.06, 0.05, 1.5, 8)
         c.boite("metal", orientation(L, lx, ly, 1.55), (0.26, 0.26, 0.04))
-        c.sphere("lumiere", orientation(L, lx, ly, 1.68), 0.1, 2)
+        c.sphere("lanterne", orientation(L, lx, ly, 1.68), 0.1, 2)
         c.boite("metal", orientation(L, lx, ly, 1.86), (0.3, 0.3, 0.05))
-        ancre(vivant, f"lanterne_arche_{1 if cote < 0 else 2}", L @ Vector((lx, ly, 1.68)))
+        ancre(reperes, f"lanterne_arche_{1 if cote < 0 else 2}", L @ Vector((lx, ly, 1.68)))
     c.objet()
 
 
-def construire_atelier(M, coll, vivant, rnd):
+def construire_atelier(M, coll, reperes, feuillage, rnd):
     x, y, _ = SITES["atelier"]
     z0 = HAUTEUR_SITE["atelier"]
     L = repere(x, y, z0, vers(5.0, -1.8))
     c = Construction("atelier", coll, M)
     larg, prof, hmur = 6.0, 4.4, 2.6
     base = 0.45
+    for k in range(-3, 4):
+        OBSTACLES.append(((L @ Vector((k * 1.0, 0, 0))).x, (L @ Vector((k * 1.0, 0, 0))).y, 2.7))
     c.boite("pierre", orientation(L, 0, 0, base / 2 - 0.25), (larg + 0.5, prof + 0.5, base + 0.5), 0.06)
     # Murs en planches verticales (une teinte par planche)
     zb = base
@@ -844,10 +1347,10 @@ def construire_atelier(M, coll, vivant, rnd):
     # Cheminée qui fume (ancre pour la fumée)
     c.boite("pierre", orientation(L, 1.7, 0.9, zt + 1.6), (0.65, 0.65, 2.3), 0.04)
     c.boite("pierre", orientation(L, 1.7, 0.9, zt + 2.8), (0.8, 0.8, 0.14), 0.03)
-    ancre(vivant, "fumee", L @ Vector((1.7, 0.9, zt + 3.0)))
-    # Fenêtres allumées et porte sur la façade avant (-Y)
+    ancre(reperes, "fumee", L @ Vector((1.7, 0.9, zt + 3.0)))
+
+    # Fenêtres allumées (avec jardinière fleurie) et porte sur la façade avant (-Y)
     def fenetre(px, py, face_y, lx=0.95, lz=1.05, cz=1.55):
-        # Le mur fait 9 cm d'épaisseur : la vitre et le cadre dépassent de sa face extérieure
         dy = face_y * 0.06
         c.boite("lumiere", orientation(L, px, py + dy, zb + cz), (lx, 0.04, lz))
         for s in (-1, 1):
@@ -855,7 +1358,12 @@ def construire_atelier(M, coll, vivant, rnd):
             c.boite("bois_sombre", orientation(L, px, py + dy * 1.5, zb + cz + s * lz / 2), (lx + 0.1, 0.12, 0.1))
         c.boite("bois_sombre", orientation(L, px, py + dy * 1.3, zb + cz), (0.05, 0.1, lz))
         c.boite("bois_sombre", orientation(L, px, py + dy * 1.3, zb + cz), (lx, 0.1, 0.05))
-        c.boite("bois", orientation(L, px, py + dy * 2.8, zb + cz - lz / 2 - 0.12), (lx + 0.3, 0.3, 0.12), 0.02)
+        c.boite("bois", orientation(L, px, py + dy * 3.2, zb + cz - lz / 2 - 0.16), (lx + 0.2, 0.28, 0.2), 0.02)
+        normale = (L.to_3x3() @ Vector((0, face_y, 0))).normalized()
+        for s in range(5):
+            p = L @ Vector((px + (s - 2) * lx * 0.22, py + dy * 3.4, zb + cz - lz / 2 - 0.02))
+            n = (normale + Vector((0, 0, 0.9)) + Vector((rnd.gauss(0, 0.3), rnd.gauss(0, 0.3), 0))).normalized()
+            feuillage.carte(p, n, Vector((0, 0, 1)), 0.38, 0.32, TUILE_BUISSON, (1.0, 1.0, 1.0), p - normale, 0.15, rnd.random(), 0.2)
     fenetre(-1.6, -prof / 2, -1)
     fenetre(1.7, -prof / 2, -1)
     fenetre(-1.2, prof / 2, 1)
@@ -868,9 +1376,9 @@ def construire_atelier(M, coll, vivant, rnd):
     # Marche, lanterne, banc, tonneaux, caisses
     c.boite("pierre", orientation(L, 0.05, -prof / 2 - 0.45, base - 0.12), (1.6, 0.7, 0.24), 0.04)
     c.boite("metal", orientation(L, 0.85, -prof / 2 - 0.25, zb + 2.25), (0.05, 0.4, 0.05))
-    c.sphere("lumiere", orientation(L, 0.85, -prof / 2 - 0.42, zb + 2.0), 0.09, 2)
+    c.sphere("lanterne", orientation(L, 0.85, -prof / 2 - 0.42, zb + 2.0), 0.09, 2)
     c.boite("metal", orientation(L, 0.85, -prof / 2 - 0.42, zb + 2.16), (0.22, 0.22, 0.04))
-    ancre(vivant, "lanterne_atelier", L @ Vector((0.85, -prof / 2 - 0.42, zb + 2.0)))
+    ancre(reperes, "lanterne_atelier", L @ Vector((0.85, -prof / 2 - 0.42, zb + 2.0)))
     c.boite("bois", orientation(L, -1.6, -prof / 2 - 0.55, base + 0.0), (1.5, 0.38, 0.07), 0.015)
     for s in (-1, 1):
         c.boite("bois_sombre", orientation(L, -1.6 + s * 0.62, -prof / 2 - 0.55, base - 0.22), (0.08, 0.32, 0.42))
@@ -886,6 +1394,11 @@ def construire_atelier(M, coll, vivant, rnd):
             c.cylindre("metal", orientation(L, bx, by, base - 0.25 + 0.7), 0.335, 0.335, 0.05, 14)
     c.boite("bois", orientation(L, -larg / 2 - 0.6, -1.0, base - 0.05, rz=0.2), (0.7, 0.7, 0.6), 0.03, (0.9, 0.8, 0.7))
     c.boite("bois", orientation(L, -larg / 2 - 0.55, -0.9, base + 0.5, rz=-0.15), (0.5, 0.5, 0.45), 0.03, (0.8, 0.75, 0.65))
+    # Tas de bois contre le pignon
+    for k in range(14):
+        rang, col = divmod(k, 5)
+        c.cylindre("bois", orientation(L, -larg / 2 - 0.35, 0.9 + (col - 2) * 0.24 + (0.12 if rang % 2 else 0), base - 0.15 + rang * 0.21,
+                                       rx=math.pi / 2), 0.11, 0.11, 0.7, 8, (0.95, 0.8, 0.6))
     # Parabole et antenne sur le toit (un clin d'œil aux réseaux et à l'IoT)
     ax, ay = -1.9, 0.6
     az = zt + faitage - (0.6) * math.tan(pente)
@@ -911,7 +1424,7 @@ def construire_cercle(M, coll, vivant, rnd):
     cx, cy, _ = SITES["cercle"]
     z0 = HAUTEUR_SITE["cercle"]
     c = Construction("cercle", coll, M)
-    # Dalle centrale et anneau lumineux (vivant)
+    OBSTACLES.append((cx, cy, 3.1))
     c.cylindre("pierre", repere(cx, cy, z0 + 0.05), 1.9, 1.85, 0.4, 40, (0.9, 0.88, 0.85))
     c.cylindre("pierre", repere(cx, cy, z0 + 0.3), 1.3, 1.25, 0.12, 40)
     for k in range(14):
@@ -928,6 +1441,7 @@ def construire_cercle(M, coll, vivant, rnd):
         ang = math.radians(150) + 2 * math.pi * (k + 0.5) / n
         rr = 5.0
         px, py = cx + rr * math.cos(ang), cy + rr * math.sin(ang)
+        OBSTACLES.append((px, py, 0.75))
         h = 2.6 + 0.8 * rnd.random()
         m = repere(px, py, z0 + h / 2 - 0.3, ang + math.pi / 2) @ Matrix.Rotation(rnd.uniform(-0.06, 0.06), 4, "X") \
             @ Matrix.Rotation(rnd.uniform(-0.05, 0.05), 4, "Y")
@@ -951,7 +1465,6 @@ def construire_cercle(M, coll, vivant, rnd):
             vv[c.teinte] = (0.85 + 0.1 * math.sin(k * 3.1),) * 3 + (1.0,)
         for f in {f for vv in tous for f in vv.link_faces}:
             f.smooth = True
-        # Glyphe : posé sur la face intérieure, trouvée en lançant un rayon depuis le centre du cercle
         c.bm.normal_update()
         arbre = BVHTree.FromBMesh(c.bm)
         origine = Vector((cx, cy, z0 + 1.55))
@@ -978,7 +1491,7 @@ def construire_cercle(M, coll, vivant, rnd):
         elif motif == 2:
             for s in range(3):
                 a2 = 2 * math.pi * s / 3 + math.pi / 2
-                g.boite("glyphe", G @ Matrix.Translation((0.11 * math.cos(a2 + math.pi / 3) * 1.0, 0.11 * math.sin(a2 + math.pi / 3), 0))
+                g.boite("glyphe", G @ Matrix.Translation((0.11 * math.cos(a2 + math.pi / 3), 0.11 * math.sin(a2 + math.pi / 3), 0))
                         @ Matrix.Rotation(a2 + math.pi / 3 + math.pi / 2, 4, "Z"), (0.36, 0.05, 0.03))
             g.boite("glyphe", G, (0.07, 0.07, 0.03))
         else:
@@ -986,6 +1499,14 @@ def construire_cercle(M, coll, vivant, rnd):
             g.boite("glyphe", G @ Matrix.Translation((0.08, 0, 0)) @ Matrix.Rotation(-0.5, 4, "Z"), (0.05, 0.38, 0.03))
             g.boite("glyphe", G @ Matrix.Translation((0, -0.2, 0)), (0.3, 0.05, 0.03))
         g.objet(vivant="glyphe", rang=k)
+    # Deux bancs de pierre face au cercle
+    for a in (math.radians(-35), math.radians(205)):
+        bx, by = cx + 7.0 * math.cos(a), cy + 7.0 * math.sin(a)
+        L = repere(bx, by, hauteur(bx, by), a + math.pi / 2)
+        c.boite("pierre", orientation(L, 0, 0, 0.42), (1.7, 0.45, 0.12), 0.03, (0.95, 0.93, 0.9))
+        for s in (-1, 1):
+            c.boite("pierre", orientation(L, s * 0.6, 0, 0.18), (0.22, 0.4, 0.4), 0.02)
+        OBSTACLES.append((bx, by, 1.0))
     c.objet()
 
 
@@ -1000,6 +1521,7 @@ def construire_cristaux(M, coll, vivant, rnd):
         off = (k - 1) * 2.3
         recul = 0.6 if k == 1 else 0.0
         px, py = sx + perp.x * off - face.x * recul, sy + perp.y * off - face.y * recul
+        OBSTACLES.append((px, py, 0.8))
         hc = 1.05 + (0.25 if k == 1 else 0.0)
         c.cylindre("pierre", repere(px, py, z0 + 0.05), 0.62, 0.58, 0.3, 24, (0.9, 0.88, 0.85))
         c.cylindre("pierre", repere(px, py, z0 + 0.2 + hc / 2), 0.36, 0.3, hc, 16)
@@ -1025,11 +1547,12 @@ def construire_cristaux(M, coll, vivant, rnd):
     c.objet()
 
 
-def construire_phare(M, coll, vivant, rnd):
+def construire_phare(M, coll, reperes, feuillage, rnd):
     px, py, _ = SITES["phare"]
     z0 = HAUTEUR_SITE["phare"]
     L = repere(px, py, z0, vers(-1.0, -1.1))
     c = Construction("phare", coll, M)
+    OBSTACLES.append((px, py, 2.5))
     c.cylindre("pierre", orientation(L, 0, 0, 0.1), 2.3, 2.2, 1.0, 32)
     hauteur_tour = 10.0
     tranches = 6
@@ -1053,7 +1576,7 @@ def construire_phare(M, coll, vivant, rnd):
     c.demi_sphere("rouge", orientation(L, 0, 0, zt + 1.78), 1.02)
     c.cylindre("metal", orientation(L, 0, 0, zt + 3.05), 0.06, 0.02, 0.6, 8)
     c.sphere("metal", orientation(L, 0, 0, zt + 2.8), 0.1, 2)
-    ancre(vivant, "phare_lampe", L @ Vector((0, 0, zt + 1.0)))
+    ancre(reperes, "phare_lampe", L @ Vector((0, 0, zt + 1.0)))
     # Porte et petites fenêtres
     c.boite("bois_sombre", orientation(L, 0, -1.66, 1.6), (0.85, 0.2, 1.8), 0.02)
     c.boite("pierre", orientation(L, 0, -1.72, 2.55), (1.1, 0.25, 0.18), 0.02)
@@ -1067,88 +1590,179 @@ def construire_phare(M, coll, vivant, rnd):
         a = math.radians(60) + 2 * math.pi * k / 34
         rr = 4.1 + rnd.uniform(-0.1, 0.1)
         t = 0.75 + 0.2 * rnd.random()
+        p = L @ Vector((rr * math.cos(a), rr * math.sin(a), 0))
         c.boite("pierre", orientation(L, rr * math.cos(a), rr * math.sin(a), 0.2 + rnd.uniform(0, 0.05), rz=a + rnd.uniform(-0.2, 0.2)),
                 (0.55, 0.8, 0.5), 0.06, (t, t, t))
+        OBSTACLES.append((p.x, p.y, 0.5))
+        if k % 4 == 0:
+            lierre(feuillage, p + Vector((0, 0, 0.35)), Vector((0, 0, 1)), rnd, 3, 0.3, 0.4)
+    # Banc face au couchant
+    bx, by = px - 3.0, py - 6.5
+    Lb = repere(bx, by, hauteur(bx, by), vers(-0.5, -1))
+    c.boite("bois", orientation(Lb, 0, 0, 0.45), (1.6, 0.42, 0.07), 0.015)
+    c.boite("bois", orientation(Lb, 0, 0.2, 0.75, rx=-0.15), (1.6, 0.06, 0.32), 0.015)
+    for s in (-1, 1):
+        c.boite("bois_sombre", orientation(Lb, s * 0.65, 0, 0.22), (0.08, 0.38, 0.45))
+    OBSTACLES.append((bx, by, 1.0))
     c.objet()
 
 
-def ancre(coll, nom, pos):
-    e = bpy.data.objects.new(nom, None)
-    e.empty_display_type = "SPHERE"
-    e.empty_display_size = 0.3
-    e.location = pos
-    coll.objects.link(e)
-    return e
+def construire_lanternes(M, coll, reperes, rnd):
+    """Lanternes le long du chemin : à la tombée du jour, elles posent des flaques de lumière chaude."""
+    c = Construction("lanternes", coll, M)
+    pts = reechantillonner(CHEMIN, 6.0)
+    n = 0
+    for k, (x, y, s) in enumerate(pts[1:-1], start=1):
+        if any(math.hypot(x - sx, y - sy) < rr - 0.5 for nom, (sx, sy, rr) in SITES.items() if nom != "etang"):
+            continue
+        ax, ay, _ = pts[k - 1]
+        bx, by, _ = pts[k + 1]
+        tx, ty = bx - ax, by - ay
+        l = math.hypot(tx, ty) or 1
+        cote = 1 if k % 2 else -1
+        lx, ly = x - ty / l * 1.45 * cote, y + tx / l * 1.45 * cote
+        if not sur_ile(lx, ly, 2.0):
+            continue
+        z = hauteur(lx, ly) - 0.05
+        L = repere(lx, ly, z, math.atan2(ty, tx))
+        c.boite("bois_sombre", orientation(L, 0, 0, 0.75), (0.1, 0.1, 1.5), 0.015)
+        c.boite("bois_sombre", orientation(L, 0, cote * 0.18, 1.45), (0.06, 0.42, 0.06))
+        c.boite("metal", orientation(L, 0, cote * 0.33, 1.38), (0.2, 0.2, 0.03))
+        c.sphere("lanterne", orientation(L, 0, cote * 0.33, 1.27), 0.075, 2)
+        c.boite("metal", orientation(L, 0, cote * 0.33, 1.16), (0.17, 0.17, 0.03))
+        pos = L @ Vector((0, cote * 0.33, 1.27))
+        ancre(reperes, f"lanterne_chemin_{n + 1}", pos)
+        OBSTACLES.append((lx, ly, 0.35))
+        n += 1
+    # Panneau indicateur au carrefour de l'atelier
+    px, py = -7.6, -6.9
+    L = repere(px, py, hauteur(px, py) - 0.05, 0)
+    c.cylindre("bois_sombre", orientation(L, 0, 0, 1.1), 0.07, 0.06, 2.2, 8)
+    for k, (cible, hz) in enumerate(((SITES["atelier"], 1.85), (SITES["cercle"], 1.55), (SITES["arche"], 1.25))):
+        a = math.atan2(cible[1] - py, cible[0] - px)
+        c.boite("bois", orientation(L, 0.35 * math.cos(a), 0.35 * math.sin(a), hz, rz=a), (0.75, 0.035, 0.18), 0.01, (1.0, 0.9, 0.8))
+    OBSTACLES.append((px, py, 0.4))
+    c.objet()
+    log(f"lanternes du chemin : {n}")
 
 
 # =========================================================================
-#  VÉGÉTATION
+#  6. VÉGÉTATION : des arbres en cartes de feuilles
 # =========================================================================
 
-def arbre_feuillu(c, x, y, z, rnd, echelle):
-    h = (3.2 + 1.4 * rnd.random()) * echelle
-    pench = Vector((rnd.uniform(-0.25, 0.25), rnd.uniform(-0.25, 0.25), 1.0)).normalized()
-    m = Matrix.Translation((x, y, z + h / 2 - 0.2)) @ pench.to_track_quat("Z", "Y").to_matrix().to_4x4()
-    c.cylindre("ecorce", m, 0.24 * echelle, 0.13 * echelle, h, 9)
-    sommet = Vector((x, y, z - 0.2)) + pench * h
-    for b in range(3):
-        a = rnd.random() * 2 * math.pi
-        d = Vector((math.cos(a), math.sin(a), 0.9)).normalized()
-        base = Vector((x, y, z)) + pench * h * (0.55 + 0.15 * b)
-        mb = Matrix.Translation(base + d * 0.6 * echelle) @ d.to_track_quat("Z", "Y").to_matrix().to_4x4()
-        c.cylindre("ecorce", mb, 0.09 * echelle, 0.05 * echelle, 1.3 * echelle, 6)
-    teinte_arbre = (lerp(0.13, 0.24, rnd.random()), lerp(0.19, 0.28, rnd.random()), lerp(0.04, 0.07, rnd.random()))
-    rayon = (1.8 + 0.5 * rnd.random()) * echelle
-    # Une couronne faite de nombreuses touffes : plus légère qu'une grosse boule
-    for k in range(13):
-        a = rnd.random() * 2 * math.pi
-        e = rnd.random() ** 0.6
-        off = Vector((math.cos(a) * rayon * 0.75 * e, math.sin(a) * rayon * 0.75 * e,
-                      (rnd.random() - 0.35) * rayon * 0.8))
-        centre = sommet + off
-        r = rayon * (0.38 + 0.22 * rnd.random()) * (1.0 - 0.25 * e)
-        v = c.sphere("feuillage", Matrix.Translation(centre) @ Matrix.Diagonal((1, 1, 0.85, 1)), r, 2, teinte_arbre)
-        c.bosseler(v, centre, r * 0.2, 2.4 / r, rnd.random() * 99)
+TEINTES_FEUILLUS = [(1.0, 1.0, 1.0), (1.08, 1.02, 0.85), (0.9, 1.0, 0.95), (1.15, 1.0, 0.75), (0.95, 0.95, 1.0)]
+TEINTES_AUTOMNE = [(1.7, 1.05, 0.55), (1.9, 0.85, 0.45), (1.5, 1.2, 0.5)]
 
 
-def arbre_conifere(c, x, y, z, rnd, echelle):
-    h = (5.0 + 2.5 * rnd.random()) * echelle
-    c.cylindre("ecorce", Matrix.Translation((x, y, z + h * 0.25)), 0.2 * echelle, 0.12 * echelle, h * 0.6, 8)
-    teinte_arbre = (lerp(0.04, 0.07, rnd.random()), lerp(0.09, 0.13, rnd.random()), lerp(0.04, 0.06, rnd.random()))
-    etages = 5
-    for k in range(etages):
-        t = k / etages
-        r = (1.75 - 1.35 * t) * echelle
-        hz = z + h * (0.18 + 0.72 * t)
-        hc = h * 0.34
-        m = Matrix.Translation((x, y, hz + hc / 2)) @ Matrix.Rotation(rnd.random() * 6.28, 4, "Z")
-        v = c.cylindre("feuillage", m, r, 0.02, hc, 11, teinte_arbre)
-        c.bosseler(v, Vector((x, y, hz + hc * 0.3)), r * 0.16, 2.2 / max(r, 0.3), rnd.random() * 99)
+def arbre_feuillu(troncs, f, x, y, z, rnd, e):
+    """Chêne : tronc courbé, branches maîtresses, couronne faite de plusieurs touffes."""
+    h = (2.6 + 1.0 * rnd.random()) * e
+    pench = Vector((rnd.uniform(-0.18, 0.18), rnd.uniform(-0.18, 0.18), 1.0)).normalized()
+    pts = []
+    for s in range(6):
+        u = s / 5
+        p = Vector((x, y, z - 0.25)) + pench * h * u + Vector((math.sin(u * 3 + x) * 0.15, math.cos(u * 2.5 + y) * 0.15, 0)) * e
+        pts.append(p)
+    rayons = [lerp(0.32, 0.17, s / 5) * e * (1.25 if s == 0 else 1.0) for s in range(6)]
+    troncs.tube("ecorce", pts, rayons, 9, (1, 1, 1), fermer=False)
+    sommet = pts[-1]
+    teinte = rnd.choice(TEINTES_AUTOMNE) if rnd.random() < 0.14 else rnd.choice(TEINTES_FEUILLUS)
+    teinte = tuple(c * rnd.uniform(0.92, 1.08) for c in teinte)
+    phase = rnd.random()
+    nb_branches = rnd.randint(4, 6)
+    rayon_couronne = (2.2 + 0.6 * rnd.random()) * e
+    for b in range(nb_branches):
+        a = 2 * math.pi * (b + rnd.uniform(-0.25, 0.25)) / nb_branches
+        elev = rnd.uniform(0.35, 0.9)
+        d = Vector((math.cos(a) * (1 - elev * 0.6), math.sin(a) * (1 - elev * 0.6), elev)).normalized()
+        l = rayon_couronne * rnd.uniform(0.6, 0.95)
+        depart = pts[4].lerp(sommet, rnd.random())
+        bout = depart + d * l
+        milieu = depart.lerp(bout, 0.5) + Vector((0, 0, 0.25 * e))
+        troncs.tube("ecorce", [depart, milieu, bout], [rayons[4] * 0.7, rayons[4] * 0.45, 0.04 * e], 6)
+        # Touffe de feuilles au bout de la branche
+        rt = rayon_couronne * rnd.uniform(0.55, 0.75)
+        coeur = bout + Vector((0, 0, rt * 0.15))
+        for k in range(rnd.randint(18, 24)):
+            dirc = Vector((rnd.gauss(0, 1), rnd.gauss(0, 1), rnd.gauss(0, 0.8) + 0.25)).normalized()
+            r = rt * rnd.uniform(0.35, 1.0) ** 0.6
+            p = coeur + Vector((dirc.x, dirc.y, dirc.z * 0.75)) * r
+            n = (dirc + Vector((rnd.gauss(0, 0.35), rnd.gauss(0, 0.35), rnd.gauss(0, 0.35)))).normalized()
+            taille = rnd.uniform(1.05, 1.5) * e
+            poids = min(1.0, 0.35 + 0.65 * (p - Vector((x, y, z))).length / (h + rayon_couronne))
+            f.carte(p, n, Vector((0, 0, 1)) + Vector((rnd.gauss(0, 0.3), rnd.gauss(0, 0.3), 0)), taille, taille * rnd.uniform(0.85, 1.05),
+                    TUILE_FEUILLU, teinte, coeur, poids, phase)
+    # Cœur de la couronne pour éviter les trous
+    for k in range(10):
+        dirc = Vector((rnd.gauss(0, 1), rnd.gauss(0, 1), rnd.gauss(0, 0.6) + 0.3)).normalized()
+        p = sommet + dirc * rayon_couronne * 0.45
+        f.carte(p, dirc, Vector((0, 0, 1)), 1.3 * e, 1.2 * e, TUILE_FEUILLU, tuple(c * 0.85 for c in teinte), sommet, 0.4, phase)
+    return h + rayon_couronne
 
 
-def cypres(c, x, y, z, rnd, echelle):
-    h = (6.0 + 2.5 * rnd.random()) * echelle
-    r = (0.8 + 0.25 * rnd.random()) * echelle
-    teinte_arbre = (lerp(0.05, 0.08, rnd.random()), lerp(0.1, 0.13, rnd.random()), lerp(0.04, 0.05, rnd.random()))
-    centre = Vector((x, y, z + h * 0.5))
-    v = c.sphere("feuillage", Matrix.Translation(centre) @ Matrix.Diagonal((r, r, h * 0.5, 1)), 1.0, 3, teinte_arbre)
-    for vv in v:
-        lz = max(0.0, min(1.0, (vv.co.z - z) / h))
-        d = Vector((vv.co.x - x, vv.co.y - y, 0))
-        k = (1.0 - 0.55 * lz ** 1.5) * (1.12 if lz < 0.2 else 1.0)
-        vv.co.x = x + d.x * k
-        vv.co.y = y + d.y * k
-    c.bosseler(v, centre, r * 0.22, 2.4, rnd.random() * 99)
-    c.cylindre("ecorce", Matrix.Translation((x, y, z + 0.3)), 0.14 * echelle, 0.12 * echelle, 0.9, 7)
+def arbre_conifere(troncs, f, x, y, z, rnd, e):
+    """Sapin : tronc droit, étages de rameaux de plus en plus courts vers la pointe."""
+    H = (6.5 + 3.0 * rnd.random()) * e
+    troncs.tube("ecorce", [Vector((x, y, z - 0.3)), Vector((x, y, z + H * 0.5)), Vector((x, y, z + H))],
+                [0.24 * e, 0.15 * e, 0.03 * e], 8)
+    teinte = (rnd.uniform(0.85, 1.05), rnd.uniform(0.9, 1.05), rnd.uniform(0.85, 1.0))
+    phase = rnd.random()
+    etages = rnd.randint(10, 13)
+    R0 = (2.3 + 0.6 * rnd.random()) * e
+    for i in range(etages):
+        t = i / (etages - 1)
+        hz = z + H * (0.16 + 0.8 * t)
+        r = R0 * (1.0 - t) ** 0.95 + 0.25 * e
+        nb = max(4, int(9 * (1.0 - t * 0.5)))
+        decal = rnd.random() * 2 * math.pi
+        for k in range(nb):
+            a = decal + 2 * math.pi * k / nb + rnd.uniform(-0.15, 0.15)
+            radial = Vector((math.cos(a), math.sin(a), 0))
+            centre = Vector((x, y, hz)) + radial * r * 0.5 - Vector((0, 0, r * 0.12))
+            n = (radial * 0.55 + Vector((0, 0, 0.85))).normalized()
+            haut = (radial - Vector((0, 0, 0.25))).normalized()
+            f.carte(centre, n, haut, r * 0.75 + 0.3 * e, r * 1.05, TUILE_AIGUILLES, teinte,
+                    Vector((x, y, hz - r * 0.3)), min(1.0, 0.25 + r / R0 * 0.75), phase, 0.12)
+    # Pointe
+    f.carte(Vector((x, y, z + H + 0.2 * e)), Vector((1, 0, 0)), Vector((0, 0, 1)), 0.7 * e, 1.2 * e, TUILE_AIGUILLES, teinte,
+            Vector((x, y, z + H - 1)), 0.6, phase, 0.3)
+    f.carte(Vector((x, y, z + H + 0.2 * e)), Vector((0, 1, 0)), Vector((0, 0, 1)), 0.7 * e, 1.2 * e, TUILE_AIGUILLES, teinte,
+            Vector((x, y, z + H - 1)), 0.6, phase, 0.3)
+    return H
 
 
-def buisson(c, x, y, z, rnd):
-    t = (lerp(0.09, 0.18, rnd.random()), lerp(0.14, 0.2, rnd.random()), lerp(0.03, 0.05, rnd.random()))
-    for k in range(2 + int(rnd.random() * 3)):
-        r = 0.35 + 0.4 * rnd.random()
-        centre = Vector((x + rnd.uniform(-0.6, 0.6), y + rnd.uniform(-0.6, 0.6), z + r * 0.35))
-        v = c.sphere("feuillage", Matrix.Translation(centre) @ Matrix.Diagonal((1, 1, 0.75, 1)), r, 2, t)
-        c.bosseler(v, centre, r * 0.28, 2.2 / r, rnd.random() * 99)
+def cypres(troncs, f, x, y, z, rnd, e):
+    """Cyprès : une flamme sombre et dense, faite de panaches verticaux."""
+    H = (6.0 + 2.8 * rnd.random()) * e
+    R = (0.85 + 0.25 * rnd.random()) * e
+    troncs.tube("ecorce", [Vector((x, y, z - 0.3)), Vector((x, y, z + 1.2))], [0.16 * e, 0.12 * e], 7)
+    teinte = (rnd.uniform(0.85, 1.0), rnd.uniform(0.9, 1.05), rnd.uniform(0.85, 1.0))
+    phase = rnd.random()
+    for couche, (rr, nb) in enumerate(((0.55, 22), (0.95, 46))):
+        for k in range(nb):
+            t = rnd.uniform(0.04, 0.97)
+            a = rnd.random() * 2 * math.pi
+            r = R * rr * math.sin(math.pi * t ** 0.85) ** 0.75
+            radial = Vector((math.cos(a), math.sin(a), 0))
+            p = Vector((x, y, z + 0.6 + H * t)) + radial * r
+            n = (radial + Vector((0, 0, 0.25))).normalized()
+            f.carte(p, n, Vector((0, 0, 1)), 0.75 * e, 1.45 * e, TUILE_CYPRES, teinte,
+                    Vector((x, y, z + 0.6 + H * t)), 0.15 + 0.85 * t * t, phase, 0.3)
+    return H
+
+
+def buisson(f, x, y, z, rnd, fleuri=None):
+    fleuri = rnd.random() < 0.45 if fleuri is None else fleuri
+    tuile = TUILE_BUISSON if fleuri else TUILE_FEUILLU
+    teinte = (rnd.uniform(0.9, 1.1), rnd.uniform(0.92, 1.08), rnd.uniform(0.8, 1.0))
+    r = rnd.uniform(0.55, 0.95)
+    coeur = Vector((x, y, z + r * 0.25))
+    phase = rnd.random()
+    for k in range(rnd.randint(12, 18)):
+        d = Vector((rnd.gauss(0, 1), rnd.gauss(0, 1), abs(rnd.gauss(0, 0.8)) + 0.15)).normalized()
+        p = coeur + Vector((d.x, d.y, d.z * 0.7)) * r * rnd.uniform(0.5, 1.0)
+        taille = r * rnd.uniform(0.9, 1.3)
+        f.carte(p, d, Vector((0, 0, 1)), taille, taille, tuile, teinte, coeur, 0.3, phase, 0.2)
 
 
 def caillou(c, x, y, z, rnd, r):
@@ -1158,20 +1772,34 @@ def caillou(c, x, y, z, rnd, r):
     c.bosseler(v, centre, r * 0.3, 1.2 / r, rnd.random() * 99)
 
 
-def construire_vegetation(M, coll_veg, coll_roche, rnd, couloir, vues):
-    def libre(x, y, marge):
-        # Rien ne pousse entre la caméra et ce qu'elle regarde à chaque chapitre
+def construire_vegetation(M, coll_veg, coll_roche, feuillage, rnd, couloir, vues):
+    def dans_le_champ(x, y, marge):
+        """Vrai si le point est dans le cône de vision d'un chapitre (de la caméra jusqu'un peu après la cible)."""
         for (ax, ay), (bx, by) in vues:
-            if dist_segment(x, y, ax, ay, bx, by) < 2.6 + marge:
-                return False
-        r = math.hypot(x, y)
-        if r > rayon_bord(math.atan2(y, x)) - 2.8:
+            vx, vy = bx - ax, by - ay
+            longueur = math.hypot(vx, vy) or 1.0
+            vx, vy = vx / longueur, vy / longueur
+            px, py = x - ax, y - ay
+            avant = px * vx + py * vy
+            cote = abs(-px * vy + py * vx)
+            if -2.0 < avant < longueur + 1.5 and cote < 2.6 + marge + max(0.0, avant) * 0.3:
+                return True
+        return False
+
+    def libre(x, y, marge):
+        if dans_le_champ(x, y, marge):
+            return False
+        if not sur_ile(x, y, 2.8):
             return False
         if min(dist_polyligne(x, y, CHEMIN), dist_polyligne(x, y, CHEMIN_ATELIER)) < 1.6 + marge * 0.5:
             return False
+        if dist_ruisseau(x, y) < 1.7 + marge * 0.4 or dist_etang(x, y) < RAYON_ETANG + 0.6 + marge * 0.5:
+            return False
         for nom, (cx, cy, rr) in SITES.items():
-            if math.hypot(x - cx, y - cy) < rr + marge:
+            if nom != "etang" and math.hypot(x - cx, y - cy) < rr + marge:
                 return False
+        if any(math.hypot(x - ox, y - oy) < orr + 0.4 for ox, oy, orr in OBSTACLES):
+            return False
         if dist_polyligne(x, y, couloir) < 3.2 + marge:
             return False
         return True
@@ -1183,9 +1811,10 @@ def construire_vegetation(M, coll_veg, coll_roche, rnd, couloir, vues):
         d = math.exp(-((x - 4) ** 2 + (y - 22) ** 2) / 50.0)
         return max(a, b, c, d)
 
+    troncs = Construction("troncs", coll_veg, M)
     places = []
     essais = 0
-    while len(places) < 95 and essais < 20000:
+    while len(places) < 100 and essais < 30000:
         essais += 1
         a = rnd.random() * 2 * math.pi
         r = math.sqrt(rnd.random()) * 34
@@ -1194,49 +1823,73 @@ def construire_vegetation(M, coll_veg, coll_roche, rnd, couloir, vues):
             continue
         if not libre(x, y, 1.0):
             continue
-        if any(math.hypot(x - px, y - py) < 2.6 for px, py in places):
+        if any(math.hypot(x - px, y - py) < 2.8 for px, py in places):
             continue
         places.append((x, y))
-    feuillus = Construction("arbres", coll_veg, M)
-    for k, (x, y) in enumerate(places):
+    especes = {"feuillu": 0, "sapin": 0, "cypres": 0}
+    for x, y in places:
         z = hauteur(x, y)
         e = 0.85 + 0.35 * rnd.random()
         choix = rnd.random()
-        if bosquet(x, y) > 0.5 and choix < 0.55:
-            arbre_conifere(feuillus, x, y, z, rnd, e)
-        elif choix < 0.82:
-            arbre_feuillu(feuillus, x, y, z, rnd, e)
+        if bosquet(x, y) > 0.5 and choix < 0.5:
+            arbre_conifere(troncs, feuillage, x, y, z, rnd, e)
+            especes["sapin"] += 1
+        elif choix < 0.84:
+            arbre_feuillu(troncs, feuillage, x, y, z, rnd, e)
+            especes["feuillu"] += 1
         else:
-            cypres(feuillus, x, y, z, rnd, e)
-    # Cyprès en alignement près du cercle et du phare
+            cypres(troncs, feuillage, x, y, z, rnd, e)
+            especes["cypres"] += 1
+        OBSTACLES.append((x, y, 0.45))
+    # Cyprès en alignement près du cercle et du phare, saules (feuillus) au bord de l'étang
     for x, y in ((-3.5, 15.5), (-0.5, 16.8), (9.5, 13.5), (19.0, 22.5), (26.5, 15.0)):
         if libre(x, y, -1.5):
-            cypres(feuillus, x, y, hauteur(x, y), rnd, 1.0)
+            cypres(troncs, feuillage, x, y, hauteur(x, y), rnd, 1.0)
             places.append((x, y))
-    feuillus.objet()
-    log(f"arbres : {len(places)}")
+            especes["cypres"] += 1
+    ex, ey, _ = SITES["etang"]
+    for a in (math.radians(40), math.radians(150), math.radians(260)):
+        x, y = ex + (RAYON_ETANG + 2.4) * math.cos(a), ey + (RAYON_ETANG + 2.4) * math.sin(a)
+        if sur_ile(x, y, 3) and dist_ruisseau(x, y) > 2.0 and dist_polyligne(x, y, CHEMIN) > 2.0 \
+                and not dans_le_champ(x, y, 1.0) and dist_polyligne(x, y, couloir) > 4.0:
+            arbre_feuillu(troncs, feuillage, x, y, hauteur(x, y), rnd, 1.1)
+            places.append((x, y))
+            especes["feuillu"] += 1
+    troncs.objet(groupe="troncs")
+    log(f"arbres : {len(places)} ({especes})")
 
-    buissons = Construction("buissons", coll_veg, M)
     n = 0
     essais = 0
-    while n < 80 and essais < 20000:
+    while n < 110 and essais < 30000:
         essais += 1
         a = rnd.random() * 2 * math.pi
         r = math.sqrt(rnd.random()) * 33
         x, y = r * math.cos(a), r * math.sin(a)
         if not libre(x, y, -0.8) or any(math.hypot(x - px, y - py) < 1.2 for px, py in places):
             continue
-        buisson(buissons, x, y, hauteur(x, y), rnd)
+        buisson(feuillage, x, y, hauteur(x, y), rnd)
         n += 1
-    # Buissons au pied des bâtiments
-    for nom, nb in (("atelier", 5), ("arche", 4), ("phare", 4), ("cristaux", 3)):
+    # Buissons au pied des bâtiments et au bord de l'eau
+    for nom, nb in (("atelier", 6), ("arche", 5), ("phare", 5), ("cristaux", 4), ("etang", 7)):
         cx, cy, rr = SITES[nom]
         for k in range(nb):
             a = rnd.random() * 2 * math.pi
-            x, y = cx + (rr - 0.3) * math.cos(a), cy + (rr - 0.3) * math.sin(a)
-            if min(dist_polyligne(x, y, CHEMIN), dist_polyligne(x, y, CHEMIN_ATELIER)) > 1.3 and dist_polyligne(x, y, couloir) > 2.0:
-                buisson(buissons, x, y, hauteur(x, y), rnd)
-    buissons.objet()
+            d = rr + (0.6 if nom == "etang" else -0.3)
+            x, y = cx + d * math.cos(a), cy + d * math.sin(a)
+            if (min(dist_polyligne(x, y, CHEMIN), dist_polyligne(x, y, CHEMIN_ATELIER)) > 1.3
+                    and dist_polyligne(x, y, couloir) > 2.0 and dist_ruisseau(x, y) > 1.3
+                    and not any(math.hypot(x - ox, y - oy) < orr + 0.3 for ox, oy, orr in OBSTACLES)):
+                buisson(feuillage, x, y, hauteur(x, y), rnd, nom != "phare")
+                n += 1
+    for k in range(18):
+        s = rnd.uniform(0.1, 0.9)
+        pts = reechantillonner(RUISSEAU, 0.5)
+        x, y, _ = pts[int(s * (len(pts) - 1))]
+        a = rnd.random() * 2 * math.pi
+        x, y = x + math.cos(a) * 1.9, y + math.sin(a) * 1.9
+        if sur_ile(x, y, 2.5) and dist_ruisseau(x, y) > 1.4:
+            buisson(feuillage, x, y, hauteur(x, y), rnd, False)
+    log(f"buissons : {n}")
 
     cailloux = Construction("cailloux", coll_roche, M)
     for k in range(70):
@@ -1249,7 +1902,7 @@ def construire_vegetation(M, coll_veg, coll_roche, rnd, couloir, vues):
             continue
         grand = r > rayon_bord(a) - 5 and rnd.random() < 0.5
         caillou(cailloux, x, y, hauteur(x, y) - 0.1, rnd, (0.7 + 0.9 * rnd.random()) if grand else (0.15 + 0.3 * rnd.random()))
-    # Petits cailloux le long du chemin
+    # Petits cailloux le long du chemin, galets le long du ruisseau
     for i in range(len(CHEMIN) - 1):
         (ax, ay), (bx, by) = CHEMIN[i], CHEMIN[i + 1]
         for s in range(4):
@@ -1259,13 +1912,142 @@ def construire_vegetation(M, coll_veg, coll_roche, rnd, couloir, vues):
             cote = 1 if rnd.random() < 0.5 else -1
             x = lerp(ax, bx, t) + cote * nx / l * (1.25 + 0.3 * rnd.random())
             y = lerp(ay, by, t) + cote * ny / l * (1.25 + 0.3 * rnd.random())
-            if math.hypot(x, y) < rayon_bord(math.atan2(y, x)) - 1 and dist_polyligne(x, y, couloir) > 1.2:
+            if sur_ile(x, y, 1) and dist_polyligne(x, y, couloir) > 1.2:
                 caillou(cailloux, x, y, hauteur(x, y) - 0.05, rnd, 0.12 + 0.18 * rnd.random())
-    cailloux.objet()
+    for (x, y, s) in reechantillonner(RUISSEAU, 1.1):
+        if not sur_ile(x, y, 1.5):
+            continue
+        for cote in (-1, 1):
+            if rnd.random() < 0.6:
+                a = rnd.random() * 2 * math.pi
+                px, py = x + math.cos(a) * 1.0, y + math.sin(a) * 1.0
+                caillou(cailloux, px, py, hauteur(px, py) + 0.05, rnd, 0.14 + 0.2 * rnd.random())
+    cailloux.objet(groupe="roche")
 
 
 # =========================================================================
-#  TRAJET DE LA CAMÉRA
+#  7. L'EAU : étang, ruisseau et cascade
+# =========================================================================
+
+def construire_eau(M, vivant, reperes):
+    cx, cy, _ = SITES["etang"]
+    z_etang = HAUTEUR_SITE["etang"] - 0.3
+
+    # Étang : disque au bord irrégulier. u vaut 0 au bord et 0,5 au centre (le site s'en sert pour fondre les rives)
+    verts, faces, uvs = [], [], []
+    anneaux, secteurs = 6, 56
+    verts.append((cx, cy, z_etang))
+    for j in range(1, anneaux + 1):
+        for i in range(secteurs):
+            a = 2 * math.pi * i / secteurs
+            R = RAYON_ETANG + 0.35 * n3(math.cos(a) * 1.5, math.sin(a) * 1.5, 3.3) + 0.25
+            r = R * j / anneaux
+            verts.append((cx + r * math.cos(a), cy + r * math.sin(a), z_etang))
+    for i in range(secteurs):
+        faces.append((0, 1 + i, 1 + (i + 1) % secteurs))
+    for j in range(1, anneaux):
+        for i in range(secteurs):
+            a = 1 + (j - 1) * secteurs + i
+            b = 1 + (j - 1) * secteurs + (i + 1) % secteurs
+            faces.append((a, a + secteurs, b + secteurs, b))
+    me = bpy.data.meshes.new("eau_etang")
+    me.from_pydata(verts, [], faces)
+    couche = me.uv_layers.new(name="eau")
+    for p in me.polygons:
+        for li, vi in zip(p.loop_indices, p.vertices):
+            x, y, _ = verts[vi]
+            r = math.hypot(x - cx, y - cy)
+            j = 0 if vi == 0 else (vi - 1) // secteurs + 1
+            couche.data[li].uv = (0.5 * (1 - j / anneaux), r)
+    me.materials.append(M["eau"])
+    ob = bpy.data.objects.new("eau_etang", me)
+    vivant.objects.link(ob)
+    ob["vivant"] = "eau"
+    ob["ecoulement"] = 0
+    ob["garder_uv"] = 1
+
+    # Ruisseau : bande qui suit le lit, à quelques centimètres sous les berges
+    pts = reechantillonner(RUISSEAU, 0.45)
+    depart = next(k for k, (x, y, s) in enumerate(pts) if dist_etang(x, y) > RAYON_ETANG - 0.4)
+    fin = next((k for k, (x, y, s) in enumerate(pts) if not sur_ile(x, y, -0.2)), len(pts) - 1)
+    pts = pts[depart:fin + 1]
+    verts, faces, uvs = [], [], []
+    z_prec = z_etang
+    lit = []
+    for k, (x, y, s) in enumerate(pts):
+        a = pts[max(0, k - 1)]
+        b = pts[min(len(pts) - 1, k + 1)]
+        tx, ty = b[0] - a[0], b[1] - a[1]
+        l = math.hypot(tx, ty) or 1
+        nx, ny = -ty / l, tx / l
+        if sur_ile(x, y, 0.4):
+            z = min(z_prec - 0.012, hauteur_sans_eau(x, y) - 0.26)
+        else:
+            z = z_prec - 0.25
+        z_prec = z
+        w = LARGEUR_RUISSEAU * (0.95 + 0.15 * n3(x * 0.4, y * 0.4, 8.0))
+        for c in (-1.0, 0.0, 1.0):
+            verts.append((x + nx * w * c, y + ny * w * c, z))
+            uvs.append(((c + 1) / 2, s - pts[0][2]))
+        lit.append((Vector((x, y, z)), Vector((tx / l, ty / l, 0))))
+    for k in range(len(pts) - 1):
+        for c in range(2):
+            a = k * 3 + c
+            faces.append((a, a + 1, a + 4, a + 3))
+    me = bpy.data.meshes.new("eau_ruisseau")
+    me.from_pydata(verts, [], faces)
+    couche = me.uv_layers.new(name="eau")
+    for p in me.polygons:
+        for li, vi in zip(p.loop_indices, p.vertices):
+            couche.data[li].uv = uvs[vi]
+    me.materials.append(M["eau"])
+    ob = bpy.data.objects.new("eau_ruisseau", me)
+    vivant.objects.link(ob)
+    ob["vivant"] = "eau"
+    ob["ecoulement"] = 1
+    ob["garder_uv"] = 1
+
+    # Cascade : un ruban qui tombe en s'écartant de la falaise, jusqu'à la mer de nuages
+    levre, direction = lit[-1]
+    direction = (direction + levre.normalized() * Vector((1, 1, 0)) * 0.6)
+    direction.z = 0
+    direction.normalize()
+    lat = Vector((-direction.y, direction.x, 0))
+    verts, faces, uvs = [], [], []
+    etapes = 44
+    chute = 40.0
+    for j in range(etapes + 1):
+        u = j / etapes
+        y_chute = chute * u ** 1.25
+        centre = levre + direction * (0.35 + 1.15 * math.sqrt(y_chute)) + Vector((0, 0, -y_chute))
+        w = 0.95 + 0.075 * y_chute
+        for c in (-1.0, -0.5, 0.0, 0.5, 1.0):
+            p = centre + lat * w * c + direction * (0.18 * (1 - c * c))
+            verts.append(tuple(p))
+            uvs.append(((c + 1) / 2, y_chute))
+    for j in range(etapes):
+        for c in range(4):
+            a = j * 5 + c
+            faces.append((a, a + 1, a + 6, a + 5))
+    me = bpy.data.meshes.new("cascade")
+    me.from_pydata(verts, [], faces)
+    couche = me.uv_layers.new(name="eau")
+    for p in me.polygons:
+        for li, vi in zip(p.loop_indices, p.vertices):
+            couche.data[li].uv = uvs[vi]
+    me.materials.append(M["eau"])
+    ob = bpy.data.objects.new("cascade", me)
+    vivant.objects.link(ob)
+    ob["vivant"] = "cascade"
+    ob["garder_uv"] = 1
+    ob["chute"] = chute
+    ancre(reperes, "cascade_haut", levre + direction * 0.6 + Vector((0, 0, -0.3)))
+    ancre(reperes, "cascade_bas", levre + direction * (0.35 + 1.15 * math.sqrt(chute)) + Vector((0, 0, -chute + 1.0)))
+    log(f"eau : étang, ruisseau de {pts[-1][2] - pts[0][2]:.0f} m, cascade de {chute:.0f} m")
+
+
+# =========================================================================
+#  8. CAMÉRA, STUDIO ET ÉTAPES
 # =========================================================================
 
 def cles_camera():
@@ -1274,38 +2056,38 @@ def cles_camera():
     def sol(x, y, dz):
         return (x, y, hauteur(x, y) + dz)
 
-    # (position, cible, chapitre). Les clés sans chapitre arrondissent le trajet entre deux chapitres.
+    # (position, cible, chapitre, champ de vision vertical en degrés)
+    # Les clés sans chapitre arrondissent le trajet entre deux chapitres.
     return [
-        ((-50.0, -49.0, 15.0), (1.0, 1.0, -5.0), 0),
-        ((-30.0, -52.0, A + 7.0), (0.0, -22.0, A + 2.0), None),
-        ((0.3, -33.5, A + 1.9), (0.0, -21.0, A + 2.5), 1),
-        ((-0.3, -19.8, A + 2.2), (-9.0, -9.0, B + 1.5), None),
-        (sol(-5.8, -13.2, 1.8), (-14.0, -6.0, B + 2.1), 2),
-        (sol(-10.5, -0.5, 4.0), (2.0, 6.0, C + 0.6), None),
-        ((-4.8, 11.8, C + 3.8), (2.0, 5.6, C + 0.9), 3),
-        ((5.0, 15.5, C + 6.5), (14.0, -3.0, D + 1.2), None),
-        (sol(9.6, 0.4, 1.8), (15.0, -6.0, D + 1.8), 4),
-        (sol(10.5, 3.5, 3.2), (22.0, 17.0, E + 5.0), None),
-        (sol(11.8, 7.6, 2.4), (23.5, 19.5, E + 6.2), 5),
+        ((-50.0, -49.0, 15.0), (1.0, 1.0, -5.0), 0, 40),
+        ((-30.0, -52.0, A + 7.0), (0.0, -22.0, A + 2.0), None, 44),
+        ((0.3, -33.5, A + 1.9), (0.0, -21.0, A + 2.5), 1, 46),
+        ((-0.3, -19.8, A + 2.2), (-9.0, -9.0, B + 1.5), None, 50),
+        (sol(-4.6, -14.3, 3.5), (-14.0, -6.0, B + 2.1), 2, 46),
+        (sol(-10.5, -0.5, 4.0), (2.0, 6.0, C + 0.6), None, 48),
+        ((-4.8, 11.8, C + 3.8), (2.0, 5.6, C + 0.9), 3, 46),
+        ((5.0, 15.5, C + 6.5), (14.0, -3.0, D + 1.2), None, 46),
+        (sol(9.6, 0.4, 1.8), (15.0, -6.0, D + 1.8), 4, 42),
+        (sol(10.5, 3.5, 3.2), (22.0, 17.0, E + 5.0), None, 46),
+        (sol(11.8, 7.6, 2.4), (23.5, 19.5, E + 6.2), 5, 46),
+        ((30.0, 12.0, E + 13.0), (10.0, 2.0, 0.0), None, 44),
+        ((66.0, 34.0, 25.0), (-1.0, 1.0, -6.0), 6, 38),
     ]
 
 
 def construire_reperes(reperes):
     cles = cles_camera()
-    for k, (cam, cible, chap) in enumerate(cles):
+    for k, (cam, cible, chap, fov) in enumerate(cles):
         e = ancre(reperes, f"cam_{k:02d}", Vector(cam))
         e["chapitre"] = -1 if chap is None else chap
+        e["fov"] = fov
         ancre(reperes, f"cible_{k:02d}", Vector(cible))
     # Direction du soleil, pour que le ciel du site place son halo au même endroit que la cuisson
     ancre(reperes, "soleil", SOLEIL_DIR * 100.0)
-    couloir =[(c[0][0], c[0][1]) for c in cles if c[0][2] < 40 and math.hypot(c[0][0], c[0][1]) < 36]
+    couloir = [(c[0][0], c[0][1]) for c in cles if c[0][2] < 40 and math.hypot(c[0][0], c[0][1]) < 36]
     vues = [((c[0][0], c[0][1]), (c[1][0], c[1][1])) for c in cles if c[2] and math.hypot(c[0][0], c[0][1]) < 40]
     return couloir, vues
 
-
-# =========================================================================
-#  STUDIO : soleil couchant et ciel
-# =========================================================================
 
 def construire_studio(studio):
     sc = bpy.context.scene
@@ -1349,7 +2131,6 @@ def construire_studio(studio):
         e = r.elements.new(p)
         e.color = (*c, 1)
     nt.links.new(plage.outputs[0], rampe.inputs[0])
-    # Halo autour du soleil
     dot = nt.nodes.new("ShaderNodeVectorMath")
     dot.operation = "DOT_PRODUCT"
     nt.links.new(coord.outputs["Generated"], dot.inputs[0])
@@ -1403,16 +2184,14 @@ def activer_gpu():
     log("Cycles sur le processeur")
 
 
-# =========================================================================
-#  ÉTAPES
-# =========================================================================
-
 def etape_construire(opts):
     t0 = time.time()
     bpy.ops.wm.read_factory_settings(use_empty=True)
     preparer_plan()
+    OBSTACLES.clear()
     rnd = random.Random(1209)
-    M = creer_matieres()
+    image_feuilles = peindre_feuilles(opts["sortie"])
+    M = creer_matieres(image_feuilles)
     racine = bpy.context.scene.collection
     c_terrain = collection("atlas_terrain", racine, 4096)
     c_roche = collection("atlas_roche", racine, 2048)
@@ -1421,16 +2200,21 @@ def etape_construire(opts):
     vivant = collection("vivant", racine)
     reperes = collection("reperes", racine)
     studio = collection("studio", racine)
+    feuillage = Feuillage()
 
     couloir, vues = construire_reperes(reperes)
-    construire_ile(M, c_terrain, c_roche)
+    arbre_roche, bords = construire_ile(M, c_terrain, c_roche)
+    racines_et_cristaux(M, c_roche, vivant, reperes, arbre_roche, bords, rnd)
     rochers_flottants(M, c_roche, rnd)
-    construire_arche(M, c_bat, reperes, rnd)
-    construire_atelier(M, c_bat, reperes, rnd)
+    construire_arche(M, c_bat, reperes, feuillage, rnd)
+    construire_atelier(M, c_bat, reperes, feuillage, rnd)
     construire_cercle(M, c_bat, vivant, rnd)
     construire_cristaux(M, c_bat, vivant, rnd)
-    construire_phare(M, c_bat, reperes, rnd)
-    construire_vegetation(M, c_veg, c_roche, rnd, couloir, vues)
+    construire_phare(M, c_bat, reperes, feuillage, rnd)
+    construire_lanternes(M, c_bat, reperes, rnd)
+    construire_eau(M, vivant, reperes)
+    construire_vegetation(M, c_veg, c_roche, feuillage, rnd, couloir, vues)
+    feuillage.objet(c_veg, M, "feuillage", groupe="feuillage", feuilles=1)
     construire_studio(studio)
 
     total = sum(len(o.data.polygons) for o in bpy.data.objects if o.type == "MESH")
@@ -1453,13 +2237,13 @@ def camera_chapitre(k):
     cam.location = e.location
     cam.rotation_euler = (cible.location - e.location).to_track_quat("-Z", "Y").to_euler()
     cam.data.sensor_fit = "VERTICAL"
-    cam.data.angle = math.radians(44)
+    cam.data.angle = math.radians(e.get("fov", 44))
     cam.data.clip_end = 2000
     sc.camera = cam
     return cam
 
 
-def rendre(chemin, opts, echantillons, largeur, hauteur_img, format_image="PNG"):
+def rendre(chemin, echantillons, largeur, hauteur_img, format_image="PNG"):
     sc = bpy.context.scene
     activer_gpu()
     sc.cycles.samples = echantillons
@@ -1477,17 +2261,34 @@ def rendre(chemin, opts, echantillons, largeur, hauteur_img, format_image="PNG")
 
 
 def etape_apercu(opts):
-    chapitres = range(6) if opts["chapitre"] == "tous" else [c for c in opts["chapitre"].split(",")]
+    chapitres = [str(k) for k in range(7)] if opts["chapitre"] == "tous" else opts["chapitre"].split(",")
     for k in chapitres:
         camera_chapitre(k)
-        rendre(os.path.join(SORTIE_BLEND, f"apercu_{k}.png"), opts, int(opts["echantillons"] or 48),
+        rendre(os.path.join(SORTIE_BLEND, f"apercu_{k}.png"), int(opts["echantillons"] or 48),
                int(opts["largeur"]), int(opts["hauteur"]))
 
 
 def etape_affiche(opts):
     camera_chapitre(0)
     os.makedirs(opts["sortie"], exist_ok=True)
-    rendre(os.path.join(opts["sortie"], "affiche.webp"), opts, int(opts["echantillons"] or 256), 1920, 1080, "WEBP")
+    rendre(os.path.join(opts["sortie"], "affiche.webp"), int(opts["echantillons"] or 256), 1920, 1080, "WEBP")
+
+
+def preparer_uv_cuisson(o):
+    """La couche « cuisson » passe en premier (TEXCOORD_0 dans le glTF) ; la couche « feuille » est gardée en second."""
+    me = o.data
+    feuille = None
+    if "feuille" in me.uv_layers:
+        feuille = np.empty(len(me.loops) * 2, dtype=np.float32)
+        me.uv_layers["feuille"].data.foreach_get("uv", feuille)
+    while me.uv_layers:
+        me.uv_layers.remove(me.uv_layers[0])
+    cuisson = me.uv_layers.new(name="cuisson")
+    if feuille is not None:
+        f = me.uv_layers.new(name="feuille")
+        f.data.foreach_set("uv", feuille)
+    me.uv_layers.active = me.uv_layers["cuisson"]
+    me.uv_layers["cuisson"].active_render = True
 
 
 def deplier_uv(objets, marge):
@@ -1512,10 +2313,16 @@ def etape_cuire(opts):
     sc.cycles.samples = int(opts["echantillons"] or (64 if rapide else 640))
     sc.cycles.sample_clamp_indirect = 4.0
     sc.cycles.max_bounces = 8
+    sc.cycles.transparent_max_bounces = 16
     sc.render.bake.margin_type = "EXTEND"
     if bpy.context.object and bpy.context.object.mode != "OBJECT":
         bpy.ops.object.mode_set(mode="OBJECT")
     os.makedirs(opts["sortie"], exist_ok=True)
+
+    # L'eau et la cascade sont rendues par le site : on les retire de la cuisson (le lit reste éclairé)
+    for o in [o for o in bpy.data.collections["vivant"].all_objects if o is not None]:
+        if o.get("vivant") in ("eau", "cascade"):
+            o.hide_render = True
 
     atlas = []
     for coll in bpy.data.collections:
@@ -1528,28 +2335,30 @@ def etape_cuire(opts):
         objets = [o for o in coll.all_objects if o.type == "MESH"]
         if not objets:
             continue
-        # On regroupe les objets fixes en un seul maillage par atlas : moins d'appels de dessin pour le navigateur
-        fixes = [o for o in objets if not o.get("mobile")]
-        if len(fixes) > 1:
-            bpy.ops.object.select_all(action="DESELECT")
-            for o in fixes:
-                o.select_set(True)
-            bpy.context.view_layer.objects.active = fixes[0]
-            bpy.ops.object.join()
-            fixes[0].name = nom
-            fixes[0].data.name = nom
+        # Les objets fixes d'un même groupe deviennent un seul maillage : moins d'appels de dessin
+        groupes = {}
+        for o in objets:
+            if not o.get("mobile"):
+                groupes.setdefault(o.get("groupe", nom), []).append(o)
+        for g, membres in groupes.items():
+            if len(membres) > 1:
+                bpy.ops.object.select_all(action="DESELECT")
+                for o in membres:
+                    o.select_set(True)
+                bpy.context.view_layer.objects.active = membres[0]
+                bpy.ops.object.join()
+            membres[0].name = g
+            membres[0].data.name = g
         objets = [o for o in coll.all_objects if o.type == "MESH"]
         for o in objets:
             o["atlas"] = nom
             o["atlas_max"] = taille
-            while o.data.uv_layers:
-                o.data.uv_layers.remove(o.data.uv_layers[0])
+            preparer_uv_cuisson(o)
         t0 = time.time()
         deplier_uv(objets, 6.0 / taille)
-        log(f"atlas {nom} : {len(objets)} objets, UV dépliés en {time.time() - t0:.1f} s")
+        log(f"atlas {nom} : {len(objets)} objets ({', '.join(o.name for o in objets[:6])}), UV dépliés en {time.time() - t0:.1f} s")
         atlas.append((nom, taille, objets))
 
-    # Cuisson : chaque atlas reçoit la lumière de toute la scène (y compris des objets vivants qui brillent)
     images = {}
     for nom, taille, objets in atlas:
         img = bpy.data.images.new(f"cuisson_{nom}", taille, taille, alpha=False, float_buffer=True)
@@ -1571,17 +2380,15 @@ def etape_cuire(opts):
                             target="IMAGE_TEXTURES", save_mode="INTERNAL")
         log(f"atlas {nom} cuit en {time.time() - t0:.1f} s ({taille} px, {sc.cycles.samples} échantillons)")
 
-    # Enregistrement : l'image est convertie par AgX, comme un rendu Blender, puis en WebP à plusieurs tailles
+    # Enregistrement : l'image est convertie par AgX, comme un rendu Blender, puis en WebP à plusieurs tailles.
+    # Le site charge d'abord la 1024, puis la plus grande quand elle est arrivée.
     sc.render.image_settings.file_format = "WEBP"
     sc.render.image_settings.color_mode = "RGB"
     sc.render.image_settings.quality = 84
-    # Trois tailles par atlas (la plus grande, la moitié, 1024) : le site charge d'abord la petite,
-    # puis remplace par la grande quand elle est arrivée.
     for nom, taille, objets in atlas:
         img = images[nom]
         img.save_render(os.path.join(SORTIE_BLEND, f"cuisson_{nom}.png"), scene=sc)
-        tailles = sorted({taille, max(1024, taille // 2), 1024}, reverse=True)
-        for t in tailles:
+        for t in sorted({taille, max(1024, taille // 2), 1024}, reverse=True):
             if t > taille:
                 continue
             if t != img.size[0]:
@@ -1590,7 +2397,7 @@ def etape_cuire(opts):
             img.save_render(chemin, scene=sc)
             log("texture :", os.path.relpath(chemin, DEPOT), f"{os.path.getsize(chemin) / 1024:.0f} Ko")
 
-    # Matière d'aperçu : la texture cuite seule (pour vérifier dans Blender), puis export
+    # Matière d'aperçu : la texture cuite seule, puis nettoyage avant l'export
     for nom, taille, objets in atlas:
         m = bpy.data.materials.new(f"cuit_{nom}")
         nt = m.node_tree
@@ -1606,30 +2413,44 @@ def etape_cuire(opts):
             o.data.materials.append(m)
             # Une seule matière : le maillage part en un seul morceau dans le glTF
             o.data.polygons.foreach_set("material_index", [0] * len(o.data.polygons))
-            for nom_attr in [a.name for a in o.data.color_attributes]:
+            for nom_attr in [a.name for a in o.data.color_attributes if a.name != "balancement"]:
                 o.data.color_attributes.remove(o.data.color_attributes[nom_attr])
 
+    # La cuisson est faite : on l'enregistre avant l'export, pour pouvoir réexporter sans tout recuire
+    for img in images.values():
+        img.pack()
+    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(SORTIE_BLEND, "ile_cuite.blend"), compress=True)
+    log(f"cuisson terminée en {time.time() - t_total:.0f} s")
+    etape_exporter(opts)
+
+
+def etape_exporter(opts):
+    """Exporte ile.glb depuis une scène déjà cuite (après l'étape « cuire », ou en ouvrant ile_cuite.blend)."""
+    # On fige la liste avant de modifier les maillages (sinon Blender peut renvoyer des objets vides)
+    vivants = [o for o in bpy.data.collections["vivant"].all_objects if o is not None]
+    for o in vivants:
+        o.hide_render = False
+        if o.type == "MESH" and not o.get("garder_uv"):
+            while o.data.uv_layers:
+                o.data.uv_layers.remove(o.data.uv_layers[0])
+        if o.type == "MESH":
+            for nom_attr in [a.name for a in o.data.color_attributes]:
+                o.data.color_attributes.remove(o.data.color_attributes[nom_attr])
     bpy.ops.object.select_all(action="DESELECT")
     for coll in bpy.data.collections:
         if coll.name.startswith("atlas_") or coll.name in ("vivant", "reperes"):
-            for o in coll.all_objects:
+            for o in [o for o in coll.all_objects if o is not None]:
                 o.select_set(True)
-    for o in bpy.data.collections["vivant"].all_objects:
-        if o.type == "MESH":
-            while o.data.uv_layers:
-                o.data.uv_layers.remove(o.data.uv_layers[0])
-            for nom_attr in [a.name for a in o.data.color_attributes]:
-                o.data.color_attributes.remove(o.data.color_attributes[nom_attr])
     chemin_glb = os.path.join(opts["sortie"], "ile.glb")
     bpy.ops.export_scene.gltf(
         filepath=chemin_glb, export_format="GLB", use_selection=True, export_extras=True,
         export_materials="NONE", export_normals=True, export_texcoords=True, export_yup=True, export_apply=True,
+        export_vertex_color="NAME", export_vertex_color_name="balancement",
         export_draco_mesh_compression_enable=True, export_draco_mesh_compression_level=7,
         export_draco_position_quantization=15, export_draco_texcoord_quantization=15,
-        export_draco_normal_quantization=8, export_cameras=False, export_lights=False, export_animations=False)
+        export_draco_normal_quantization=8, export_draco_color_quantization=8,
+        export_cameras=False, export_lights=False, export_animations=False)
     log("modèle :", os.path.relpath(chemin_glb, DEPOT), f"{os.path.getsize(chemin_glb) / 1024:.0f} Ko")
-    bpy.ops.wm.save_as_mainfile(filepath=os.path.join(SORTIE_BLEND, "ile_cuite.blend"), compress=True)
-    log(f"cuisson terminée en {time.time() - t_total:.0f} s")
 
 
 def principal():
@@ -1639,7 +2460,7 @@ def principal():
         preparer_plan()
     for e in opts["etapes"]:
         {"construire": etape_construire, "apercu": etape_apercu, "affiche": etape_affiche,
-         "cuire": etape_cuire}[e](opts)
+         "cuire": etape_cuire, "exporter": etape_exporter}[e](opts)
 
 
 if __name__ == "__main__":

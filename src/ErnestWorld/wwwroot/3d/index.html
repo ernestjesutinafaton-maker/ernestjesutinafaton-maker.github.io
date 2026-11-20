@@ -13,7 +13,7 @@
 
   <title>Ernest Afaton · L'île en 3D</title>
   <meta name="description" content="Le portfolio d'Ernest Afaton en version immersive : une île en 3D au coucher du soleil, modélisée et éclairée dans Blender, à parcourir en faisant défiler la page.">
-  <meta name="theme-color" content="#1a1430">
+  <meta name="theme-color" content="#120d14">
   <link rel="canonical" href="https://ernestjesutinafaton-maker.github.io/3d/">
 
   <meta property="og:title" content="Ernest Afaton · L'île en 3D">
@@ -26,7 +26,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 
   <!-- Langue choisie avant l'affichage (même réglage que le reste du site : « ernest-lang ») -->
   <script>
@@ -63,6 +63,7 @@
     <a class="logo" href="../" data-i18n-attr="aria-label=logo.label" aria-label="Retour au portfolio classique">
       <span class="logo-mark">EA</span>
       <span class="logo-text">Ernest Afaton</span>
+      <span class="logo-sous" data-i18n="logo.sous">Portfolio — 2026</span>
     </a>
     <nav class="versions" data-i18n-attr="aria-label=nav.label" aria-label="Autres versions du portfolio">
       <a href="../" data-i18n="nav.classic">Version classique</a>
@@ -76,12 +77,13 @@
 
   <nav class="sommaire" data-i18n-attr="aria-label=toc.label" aria-label="Chapitres">
     <ol>
-      <li><a href="#ch0" data-chapitre="0"><span data-i18n="toc.0">Accueil</span></a></li>
-      <li><a href="#ch1" data-chapitre="1"><span data-i18n="toc.1">À propos</span></a></li>
-      <li><a href="#ch2" data-chapitre="2"><span data-i18n="toc.2">Expérience</span></a></li>
-      <li><a href="#ch3" data-chapitre="3"><span data-i18n="toc.3">Compétences</span></a></li>
-      <li><a href="#ch4" data-chapitre="4"><span data-i18n="toc.4">Projets</span></a></li>
-      <li><a href="#ch5" data-chapitre="5"><span data-i18n="toc.5">Contact</span></a></li>
+      <li><a href="#ch0" data-chapitre="0" data-num="00"><span data-i18n="toc.0">Accueil</span></a></li>
+      <li><a href="#ch1" data-chapitre="1" data-num="01"><span data-i18n="toc.1">À propos</span></a></li>
+      <li><a href="#ch2" data-chapitre="2" data-num="02"><span data-i18n="toc.2">Expérience</span></a></li>
+      <li><a href="#ch3" data-chapitre="3" data-num="03"><span data-i18n="toc.3">Compétences</span></a></li>
+      <li><a href="#ch4" data-chapitre="4" data-num="04"><span data-i18n="toc.4">Projets</span></a></li>
+      <li><a href="#ch5" data-chapitre="5" data-num="05"><span data-i18n="toc.5">Contact</span></a></li>
+      <li><a href="#ch6" data-chapitre="6" data-num="06"><span data-i18n="toc.6">Fin</span></a></li>
     </ol>
   </nav>
 
@@ -92,7 +94,7 @@
       <div class="scene-texte">
         <div class="panneau panneau-accueil cote-gauche">
           <p class="statut"><span class="point" aria-hidden="true"></span><span data-i18n="hero.status">Disponible pour un stage de 4 à 5 semaines</span></p>
-          <h1 id="t0"><span class="bonjour" data-i18n="hero.hello">Bonjour, je suis</span><span class="degrade">Ernest Afaton</span></h1>
+          <h1 id="t0"><span class="bonjour" data-i18n="hero.hello">Bonjour, je suis</span>Ernest <em>Afaton</em></h1>
           <p class="role" data-i18n="hero.role">Développeur web et mobile · Systèmes et réseaux · IoT</p>
           <p data-i18n="hero.lead">Bienvenue sur mon île : mon portfolio en version immersive. Fais défiler la page, chaque lieu raconte une partie de mon parcours.</p>
           <p class="indice" aria-hidden="true"><span class="souris"><i></i></span><span data-i18n="hero.cue">Défiler pour explorer</span></p>
@@ -186,7 +188,7 @@
       <div class="scene-texte">
         <div class="panneau cote-gauche">
           <p class="surtitre"><span>05</span> <span data-i18n="contact.eyebrow">Le phare · Contact</span></p>
-          <h2 id="t5"><span data-i18n="contact.title">Un stage à proposer ?</span> <span class="degrade" data-i18n="contact.title2">Parlons-en.</span></h2>
+          <h2 id="t5"><span data-i18n="contact.title">Un stage à proposer ?</span> <em data-i18n="contact.title2">Parlons-en.</em></h2>
           <p data-i18n="contact.text">Je recherche un stage de 4 à 5 semaines en développement ou en systèmes et réseaux. Le plus simple pour me joindre : l'email ou LinkedIn.</p>
           <div class="actions">
             <a class="bouton bouton-plein" href="mailto:ernestjesutinafaton@gmail.com">
@@ -202,6 +204,25 @@
             <a href="https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/tree/main/tools/blender" target="_blank" rel="noopener" data-i18n="contact.how">Comment l'île est faite</a>
           </p>
           <p class="credit" data-i18n="contact.credit">Île modélisée par un script Python dans Blender, lumière calculée par Cycles, affichée avec Three.js.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6 · Vue d'ensemble depuis le couchant : fin du voyage -->
+    <section class="chapitre" id="ch6" data-chapitre="6" aria-labelledby="t6">
+      <div class="scene-texte">
+        <div class="panneau cote-gauche">
+          <p class="surtitre"><span>06</span> <span data-i18n="end.eyebrow">Fin du voyage</span></p>
+          <h2 id="t6" data-i18n="end.title">Merci d'avoir exploré mon île.</h2>
+          <p data-i18n="end.text">Tout le parcours existe aussi en portfolio sur une seule page, et en jeu avec des boss à vaincre.</p>
+          <div class="actions">
+            <a class="bouton" href="#ch0" data-aller="0">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
+              <span data-i18n="end.top">Revenir au début</span>
+            </a>
+            <a class="bouton" href="../" data-i18n="end.classic">Portfolio classique</a>
+            <a class="bouton bouton-plein" href="../jeu/" data-i18n="end.game">Jouer à la version jeu</a>
+          </div>
         </div>
       </div>
     </section>
