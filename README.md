@@ -5,32 +5,34 @@
 Portfolio et blog d'Ernest Afaton, en trois versions :
 
 - **le portfolio classique**, en page d'accueil : tout le parcours sur une seule page (projets, compétences, formation, certifications) ;
-- **la version immersive**, sous `/3d/` : une île au coucher du soleil, modélisée et éclairée dans **Blender**,
-  que l'on parcourt en faisant défiler la page. Chaque lieu de l'île est un chapitre du parcours ;
+- **la version immersive**, sous `/3d/` : un royaume fortifié sur une île volante, modélisé et éclairé dans **Blender**.
+  Visite guidée au défilement (chaque lieu est un chapitre du parcours), ou mode libre pour entrer dans les bâtiments et
+  parler aux habitants, avec les autres visiteurs en temps réel ;
 - **la version jeu**, sous `/jeu/` : une île en 3D où chaque bâtiment est une section. Le visiteur gagne de l'XP,
   monte de rang, affronte des boss et débloque des succès en explorant et en lisant le Journal (blog).
 
 Les trois versions existent en français et en anglais (bouton FR / EN, ou `?lang=en` dans l'adresse).
 
-**Portfolio :** https://ernestjesutinafaton-maker.github.io · **Île en 3D :** https://ernestjesutinafaton-maker.github.io/3d/ · **Jeu :** https://ernestjesutinafaton-maker.github.io/jeu/
+**Portfolio :** https://ernestjesutinafaton-maker.github.io · **Royaume en 3D :** https://ernestjesutinafaton-maker.github.io/3d/ · **Jeu :** https://ernestjesutinafaton-maker.github.io/jeu/
 
-### L'île en 3D (`/3d/`)
+### Le royaume en 3D (`/3d/`)
 
-[![L'île en 3D : la vue d'ensemble au coucher du soleil, l'atelier (expérience), le cercle de pierres (compétences) et le phare (contact)](docs/apercu-3d.jpg)](https://ernestjesutinafaton-maker.github.io/3d/)
+[![Le royaume en 3D : vue d'ensemble au coucher du soleil, la grande salle et ses cristaux (projets), le mode libre avec un dialogue et un autre visiteur, le phare (contact)](docs/apercu-3d.jpg)](https://ernestjesutinafaton-maker.github.io/3d/)
 
 ### Le portfolio classique et la version jeu
 
 | Portfolio classique (`/`) | Version jeu (`/jeu/`) |
 |---|---|
-| [![La page d'accueil : présentation, boutons pour jouer ou voir les projets, lien vers l'île en 3D](docs/apercu-accueil.jpg)](https://ernestjesutinafaton-maker.github.io/) | [![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)](https://ernestjesutinafaton-maker.github.io/jeu/) |
+| [![La page d'accueil : présentation, boutons pour jouer ou voir les projets, lien vers la version 3D](docs/apercu-accueil.jpg)](https://ernestjesutinafaton-maker.github.io/) | [![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)](https://ernestjesutinafaton-maker.github.io/jeu/) |
 
 > **In English:** my portfolio and blog. The home page is a classic one-page resume; the immersive version
-> ([/3d/](https://ernestjesutinafaton-maker.github.io/3d/?lang=en)) is a sunset island modeled by a Python script in
-> **Blender**, with lighting baked by Cycles and rendered by Three.js as you scroll; the game version is a 3D island
+> ([/3d/](https://ernestjesutinafaton-maker.github.io/3d/?lang=en)) is a walled kingdom on a floating island, modeled by a
+> Python script in **Blender**, with lighting baked by Cycles and rendered by Three.js: take the guided tour by scrolling,
+> or walk around freely, enter the buildings and talk to the townsfolk; the game version is a 3D island
 > where every building is a part of my journey, with 5 bosses to fight in turn-based battles where questions about my
 > projects are your attacks. All three are available in English. Built with **C# (Blazor WebAssembly, .NET 10)**,
 > **Blender**, **Three.js**, xUnit and GitHub Actions. **[Portfolio](https://ernestjesutinafaton-maker.github.io/?lang=en)** ·
-> **[3D island](https://ernestjesutinafaton-maker.github.io/3d/?lang=en)** · **[Play it](https://ernestjesutinafaton-maker.github.io/jeu/?lang=en)**
+> **[3D kingdom](https://ernestjesutinafaton-maker.github.io/3d/?lang=en)** · **[Play it](https://ernestjesutinafaton-maker.github.io/jeu/?lang=en)**
 >
 > ⭐ Si le projet te plaît, une étoile sur GitHub m'aide beaucoup. If you like it, a star really helps!
 
@@ -101,34 +103,56 @@ Dans `Bestiary.cs`, ajouter une ligne `new(T("Question ?", "Question?"), T("Bonn
 Le paramètre `HintPlace` indique le lieu de l'île où trouver la réponse, `Code` affiche un extrait de code,
 et `Phase: 2` réserve la question à la phase enragée du boss final. Les tests vérifient que chaque question est bien formée.
 
-## L'île en 3D (Blender)
+## Le royaume en 3D (Blender)
 
-La version immersive (`/3d/`) suit la méthode des sites 3D « réalistes » : on ne demande pas au navigateur de calculer
-l'éclairage, on le **cuit** à l'avance.
+La version immersive (`/3d/`) est un royaume fortifié sur une île volante, au coucher du soleil (une ville originale à
+trois enceintes, sans emprunt à une œuvre existante). Elle suit la méthode des sites 3D « réalistes » : on ne demande
+pas au navigateur de calculer l'éclairage, on le **cuit** à l'avance.
 
-1. `tools/blender/ile.py` construit l'île dans Blender avec Python :
-   - le relief, la falaise en blocs et en colonnes, les racines qui pendent, des cristaux lumineux dans la roche ;
-   - le chemin et ses lanternes, un étang, le ruisseau et sa cascade qui tombe dans les nuages ;
-   - l'arche couverte de lierre, l'atelier, le cercle de menhirs, les socles des cristaux, le phare ;
-   - une centaine d'arbres (chênes, sapins, cyprès) et de buissons fleuris, faits de **cartes de feuilles** : des rectangles
-     découpés par une texture de feuilles que le script peint lui-même (`feuilles_*.webp`), comme dans les jeux vidéo ;
+1. `tools/blender/ile.py` et le dossier `tools/blender/royaume/` construisent le royaume dans Blender avec Python :
+   - trois enceintes de remparts avec leurs tours, leurs portes fortifiées et leurs chemins de ronde ;
+   - la ville : une cinquantaine de maisons à colombages, la place du marché et sa fontaine, la chapelle, la taverne ;
+   - le château : donjon, tour de la bibliothèque, cour, jardins, grande salle ;
+   - des **intérieurs où l'on entre** : l'atelier (expérience), la bibliothèque des guildes (compétences), la grande salle
+     et ses cristaux (projets), la forge ;
+   - la campagne : fermes, champs, moulin, rivière, étang, cascade qui tombe de l'île, et le phare (contact) au bout du chemin ;
+   - près de 270 arbres faits de **cartes de feuilles** (des rectangles découpés par une texture que le script peint lui-même) ;
+   - les pièces des personnages (tête, bras, jambes, coiffures, outils) et des animaux, la carte de marche
+     (`royaume_carte.png`) et les chemins des habitants (`royaume.json`) ;
    - le trajet de la caméra (objets vides `cam_XX` / `cible_XX`, avec leur champ de vision).
-2. Cycles calcule la lumière du coucher de soleil (soleil, ciel, ombres douces, lumière qui rebondit, fenêtres et lanternes
-   allumées) et l'enregistre dans quatre **atlas** (terrain, roche, bâtiments, végétation), en WebP de 1024 à 4096 pixels.
+2. Cycles calcule la lumière du coucher de soleil (ombres douces, lumière qui rebondit, fenêtres, lanternes et feux
+   allumés) et l'enregistre dans douze **atlas**, en WebP de 1024 à 4096 pixels.
 3. Le modèle part en glTF compressé avec Draco (`ile.glb`).
-4. Dans le navigateur, `wwwroot/3d/ile3d.js` affiche chaque maillage avec sa texture cuite, sans calcul de lumière : la scène
-   ressemble au rendu de Blender et reste fluide sur téléphone. Three.js ajoute ce qui vit :
-   - les feuilles et l'herbe qui bougent dans le vent. L'herbe prend sa couleur dans l'atlas du terrain, donc aussi ses ombres ;
-   - l'eau qui reflète le ciel, la cascade et sa brume, la mer de nuages ;
-   - une brume dorée du côté du soleil, des rayons de lumière ;
-   - le faisceau du phare, les cristaux, les glyphes, les lucioles, la fumée et les oiseaux.
+4. Dans le navigateur, `wwwroot/3d/ile3d.js` affiche chaque maillage avec sa texture cuite, sans calcul de lumière, et
+   ajoute ce qui vit : feuilles et herbe dans le vent, eau, cascade, fontaine, feux, fumées, moulin, nuages, brume, rayons,
+   faisceau du phare, lucioles, oiseaux. Les modules de `wwwroot/3d/moteur/` ajoutent :
+   - `personnages.js` : environ 120 habitants animés (passants, gardes sur les remparts, paysans, marchands), des moutons,
+     des chevaux avec leur charrette, des chiens, et **Ernest**, qui attend à chaque lieu de la visite ;
+   - `dialogues.js` : ce que disent les personnages (le capitaine, le coach de l'atelier, le forgeron du C#, la
+     bibliothécaire, l'intendante, le gardien du phare...), en français et en anglais ;
+   - `exploration.js` : le **mode libre**, où l'on marche avec Ernest (ZQSD / WASD, joystick sur téléphone), on entre
+     dans les bâtiments et on parle aux habitants (touche E) ;
+   - `multijoueur.js` : le nombre de **visiteurs présents**, leurs avatars en temps réel et un **chat** (voir plus bas).
 
-   Le défilement de la page fait avancer la caméra d'un chapitre à l'autre, jusqu'à une vue d'ensemble pour finir.
+Le défilement de la page fait avancer la caméra d'un chapitre à l'autre ; le bouton « Explorer librement » passe en mode libre.
+Le site charge d'abord les atlas en 1024 pixels, puis la haute définition (2048 sur mobile, 4096 sur ordinateur).
+Sans WebGL, la page affiche une image du royaume rendue par Blender (`assets/affiche.webp`) et tout le texte reste lisible.
 
-Le site charge d'abord les atlas en 1024 pixels, puis les remplace par la haute définition (2048 sur mobile, 4096 sur ordinateur).
-Sans WebGL, la page affiche une image de l'île rendue par Blender (`assets/affiche.webp`) et tout le texte reste lisible.
+> Le coach de l'atelier représente une vraie personne : il ne dit que des faits vérifiables (dates, projets, chiffres).
+> Pour lui faire dire ses propres mots, il faut les lui demander et les recopier dans `moteur/dialogues.js` avec son accord.
 
-Régénérer l'île (il faut [Blender](https://www.blender.org/download/) 5.1 ; la cuisson prend une vingtaine de minutes avec une carte graphique) :
+### Visiteurs en temps réel et chat
+
+Le site est statique : le temps réel passe par [Supabase Realtime](https://supabase.com/docs/guides/realtime)
+(« Presence » pour savoir qui est là, « Broadcast » pour les positions et les messages ; rien n'est enregistré).
+
+1. Créer un projet gratuit sur supabase.com (un projet à part).
+2. Dans *Project Settings > API*, copier l'URL du projet et la clé **anon public**.
+3. Les coller dans `wwwroot/3d/config-multijoueur.js`. La clé anon est faite pour être publique.
+
+Tant que ce fichier est vide, le compteur et le chat restent cachés et rien n'est chargé.
+
+Régénérer le royaume (il faut [Blender](https://www.blender.org/download/) 5.1 ; la cuisson prend environ une heure avec une carte graphique) :
 
 ```bash
 blender -b --factory-startup --python tools/blender/ile.py                                # construit, cuit et exporte
@@ -136,7 +160,7 @@ blender -b --factory-startup --python tools/blender/ile.py -- --etapes construir
 blender -b --factory-startup --python tools/blender/ile.py -- --rapide                    # cuisson rapide pour essayer
 ```
 
-Pour retoucher l'île à la main : ouvrir `tools/blender/out/ile.blend` dans Blender, modifier (déplacer un arbre, ajouter un
+Pour retoucher le royaume à la main : ouvrir `tools/blender/out/ile.blend` dans Blender, modifier (déplacer un arbre, ajouter un
 objet dans une collection `atlas_…`, déplacer une clé de caméra), enregistrer, puis relancer seulement la cuisson :
 
 ```bash

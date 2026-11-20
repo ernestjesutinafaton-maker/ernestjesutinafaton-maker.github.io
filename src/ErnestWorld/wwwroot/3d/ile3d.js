@@ -1,20 +1,25 @@
 /*
-  L'ÎLE EN 3D · moteur de la version immersive (Three.js)
+  LE ROYAUME EN 3D · moteur de la version immersive (Three.js)
 
-  L'île vient de Blender (tools/blender/ile.py) : un fichier ile.glb (la géométrie, compressée avec Draco)
-  et des « atlas » de lumière cuite par Cycles. Chaque maillage cuit est affiché avec une matière sans
-  calcul d'éclairage (MeshBasicMaterial) : l'image contient déjà le soleil, les ombres douces et la lumière
-  qui rebondit. Les arbres sont faits de « cartes » de feuilles découpées par une texture peinte.
+  Le royaume vient de Blender (tools/blender/ile.py et le dossier royaume/) : un fichier ile.glb (la
+  géométrie, compressée avec Draco) et des « atlas » de lumière cuite par Cycles. Chaque maillage cuit est
+  affiché avec une matière sans calcul d'éclairage (MeshBasicMaterial) : l'image contient déjà le soleil,
+  les ombres douces et la lumière qui rebondit. Les arbres sont faits de « cartes » de feuilles.
 
-  Le navigateur ajoute ce qui vit : feuilles et herbe dans le vent (l'herbe prend sa couleur dans l'atlas
-  du terrain, donc aussi ses ombres), eau qui reflète le ciel, cascade, ciel, mer de nuages, brume teintée
-  par le soleil, rayons de lumière, faisceau du phare, cristaux, glyphes, lucioles, fumée, oiseaux.
+  Le navigateur ajoute ce qui vit : feuilles et herbe dans le vent, eau qui reflète le ciel, cascade,
+  fontaine, feux, fumées, moulin, ciel, mer de nuages, brume, rayons de lumière, faisceau du phare,
+  cristaux, lucioles, oiseaux ; et les habitants (moteur/personnages.js), éclairés en temps réel.
 
-  La caméra suit un trajet tracé dans Blender (objets vides cam_XX et cible_XX, avec leur champ de vision).
-  Le défilement de la page choisit la position sur ce trajet : chaque chapitre (section HTML) est un arrêt.
+  Deux façons de visiter :
+  - la visite guidée : la caméra suit un trajet tracé dans Blender (objets vides cam_XX et cible_XX), le
+    défilement de la page choisit la position sur ce trajet, chaque chapitre (section HTML) est un arrêt,
+    et Ernest attend à chaque lieu ;
+  - le mode libre (moteur/exploration.js) : on marche avec Ernest, on entre dans les bâtiments, on parle
+    aux habitants (moteur/dialogues.js).
+  Les autres visiteurs présents apparaissent en avatars, avec un chat (moteur/multijoueur.js, si réglé).
 
-  Organisation : réglages · langue · outils et GLSL partagé · défilement · chargement · scène (île, ciel,
-  nuages, eau, herbe, objets vivants, effets) · rendu · boucle.
+  Organisation : réglages · langue · outils et GLSL partagé · défilement · chargement · scène (royaume,
+  ciel, nuages, eau, herbe, objets vivants, effets, habitants) · rendu · modes · boucle.
 */
 import * as THREE from "../lib/three/three.module.js";
 import { GLTFLoader } from "../lib/three/loaders/GLTFLoader.js";
@@ -24,6 +29,11 @@ import { RenderPass } from "../lib/three/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "../lib/three/postprocessing/UnrealBloomPass.js";
 import { ShaderPass } from "../lib/three/postprocessing/ShaderPass.js";
 import { OutputPass } from "../lib/three/postprocessing/OutputPass.js";
+import { Peuple, Royaume, CarteMarche, ERNEST } from "./moteur/personnages.js";
+import { Dialogue } from "./moteur/dialogues.js";
+import { Exploration } from "./moteur/exploration.js";
+import { Multijoueur } from "./moteur/multijoueur.js";
+import { MULTIJOUEUR } from "./config-multijoueur.js";
 
 /* =========================================================================
    RÉGLAGES
@@ -33,6 +43,7 @@ const racine = document.documentElement;
 const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const tactile = window.matchMedia("(pointer: coarse)").matches;
 const petitEcran = () => window.innerWidth <= 760;
+if (tactile) racine.classList.add("tactile");
 const MODESTE = petitEcran() || tactile || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
 const QUALITE = {
   ratio: Math.min(window.devicePixelRatio || 1, MODESTE ? 1.5 : 2),
@@ -41,9 +52,14 @@ const QUALITE = {
   feuilles: MODESTE ? 1024 : 2048,
   couchesNuages: MODESTE ? 4 : 7,
   lucioles: MODESTE ? 70 : 160,
-  herbe: MODESTE ? 22000 : 65000,
+  herbe: MODESTE ? 26000 : 80000,
   rayons: !MODESTE,
+  habitants: MODESTE ? { humains: 110, animaux: 30 } : { humains: 170, animaux: 40 },
 };
+
+// Où se tient Ernest à chaque chapitre de la visite, et qui parle dans la bulle
+const GUIDE_CHAPITRE = ["guide_porte", "guide_porte", "guide_atelier", "guide_guilde", "guide_grande_salle", "guide_phare", "guide_phare"];
+const BULLE_CHAPITRE = [null, "capitaine", "coach", "bibliothecaire", "intendante", "gardien", null];
 
 // Couleurs du coucher de soleil (sRGB), accordées au ciel utilisé par Blender pour la cuisson
 const PALETTE = {
@@ -66,22 +82,35 @@ const PALETTE = {
    ========================================================================= */
 
 const EN = {
-  "meta.title": "Ernest Afaton · The 3D island",
-  "meta.description": "Ernest Afaton's portfolio as an immersive experience: a 3D island at sunset, modeled and lit in Blender, to explore by scrolling.",
+  "meta.title": "Ernest Afaton · The 3D kingdom",
+  "meta.description": "Ernest Afaton's portfolio as an immersive experience: a walled kingdom on a floating island at sunset, modeled and lit in Blender. Take the guided tour or walk around and talk to the townsfolk.",
   "skip": "Skip to content",
   "logo.label": "Back to the classic portfolio",
   "logo.sous": "Portfolio — 2026",
   "nav.label": "Other versions of the portfolio",
   "nav.classic": "Classic version",
   "nav.game": "Game version",
+  "libre.entrer": "Explore freely",
+  "libre.retour": "Back to the tour",
+  "libre.clavier": "<kbd>WASD</kbd> or arrows to walk · <kbd>Shift</kbd> to run · drag to look around · <kbd>E</kbd> to talk · <kbd>Esc</kbd> to go back",
+  "libre.tactile": "Joystick to walk · drag on the right to look around",
+  "libre.parler": "Talk",
+  "libre.parlerA": "Talk to",
+  "dialogue.fermer": "Close",
+  "chat.titre": "Visitors here now",
+  "chat.fermer": "Close the chat",
+  "chat.placeholder": "Write a message…",
+  "chat.envoyer": "Send",
+  "chat.note": "Nothing is saved: only the visitors here right now see these messages.",
+  "presence.label": "Visitors online: open the chat",
   "toc.label": "Chapters",
   "toc.0": "Home", "toc.1": "About", "toc.2": "Experience", "toc.3": "Skills", "toc.4": "Projects", "toc.5": "Contact", "toc.6": "The end",
   "hero.status": "Available for a 4 to 5 week internship",
   "hero.hello": "Hi, I'm",
   "hero.role": "Web and mobile developer · Systems and networks · IoT",
-  "hero.lead": "Welcome to my island: my portfolio as an immersive experience. Scroll down, each place tells part of my journey.",
-  "hero.cue": "Scroll to explore",
-  "about.eyebrow": "The arch · About",
+  "hero.lead": "Welcome to my kingdom: my portfolio as an immersive experience. Scroll for the guided tour, or explore freely, walk into the buildings and talk to the townsfolk.",
+  "hero.cue": "Scroll for the tour",
+  "about.eyebrow": "The kingdom gate · About",
   "about.title": "Understand how things work, then build them.",
   "about.p1": "I'm in the second year of a Computer Science Bachelor's at EPSI Lyon, in the software design and development track, and I'm also preparing the BTS SIO, SLAM option (a French national IT diploma, 2027 exams).",
   "about.p2": "I like going down the layers: from a PHP framework written without any library to a containerized NAS server reachable from anywhere.",
@@ -94,12 +123,12 @@ const EN = {
   "exp.l1": "<strong>InfraHub</strong>, built in 2 weeks: a ticketing platform for students, with role-based access control and automatic incident escalation.",
   "exp.l2": "<strong>Self-hosted NAS</strong> designed, deployed and run on my own, with <strong>99.9%</strong> measured uptime.",
   "exp.l3": "<strong>Scrum Master</strong> on 4 team projects.",
-  "skills.eyebrow": "The stone circle · Skills",
+  "skills.eyebrow": "The guild library · Skills",
   "skills.title": "From code to infrastructure.",
-  "skills.sub": "Seven stones, seven skill families.",
+  "skills.sub": "Seven banners, seven skill families.",
   "sk.web": "Web development", "sk.cs": "C# and .NET", "sk.mobile": "Mobile", "sk.back": "Back end and data",
   "sk.net": "Systems and networks", "sk.iot": "IoT and embedded", "sk.tools": "Methods", "sk.tests": "unit testing",
-  "proj.eyebrow": "The crystals · Projects",
+  "proj.eyebrow": "The great hall · Projects",
   "proj.title": "What I've built.",
   "p.ecopay": "A SaaS platform that collects school fees for private schools in West Africa, with Mobile Money payments and automatic reminders.",
   "p.boutik": "Checkout, stock and credit sales for small shops, on Android, iPhone and desktop, even offline.",
@@ -115,21 +144,22 @@ const EN = {
   "contact.mail": "Send an email",
   "contact.classic": "Classic portfolio",
   "contact.game": "Game version",
-  "contact.how": "How the island is made",
-  "contact.credit": "Island modeled by a Python script in Blender, lighting computed by Cycles, displayed with Three.js.",
+  "contact.how": "How the kingdom is made",
+  "contact.credit": "Kingdom modeled by a Python script in Blender, lighting computed by Cycles, displayed with Three.js.",
   "end.eyebrow": "The end of the journey",
-  "end.title": "Thanks for exploring my island.",
-  "end.text": "The whole journey also exists as a one-page portfolio, and as a game with bosses to beat.",
+  "end.title": "Thanks for visiting my kingdom.",
+  "end.text": "Now walk around on your own: every building can be entered and the townsfolk have plenty to say. The whole journey also exists as a one-page portfolio, and as a game.",
   "end.top": "Back to the start",
   "end.classic": "Classic portfolio",
   "end.game": "Play the game version",
-  "load.title": "The island is getting ready…",
+  "load.title": "The kingdom is getting ready…",
   "load.classic": "See the classic version instead",
-  "no3d": "3D couldn't start on this device: here is the island as an image, and all the content is still readable.",
+  "no3d": "3D couldn't start on this device: here is the kingdom as an image, and all the content is still readable.",
 };
 
 const FR = {};
 let langue = racine.getAttribute("data-lang") === "en" ? "en" : "fr";
+const surLangue = [];     // modules à prévenir quand la langue change (dialogues, chat...)
 
 function appliquerLangue(lang) {
   langue = lang;
@@ -156,6 +186,7 @@ function appliquerLangue(lang) {
   racine.setAttribute("data-lang", lang);
   document.querySelectorAll("[data-set-lang]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.setLang === lang)));
   racine.classList.remove("i18n-pending");
+  for (const f of surLangue) f(lang);
 }
 
 document.querySelectorAll("[data-set-lang]").forEach((b) => {
@@ -266,7 +297,7 @@ const U_BRUME = {
   uBrume: { value: couleur(PALETTE.brume) },
   uBrumeSoleil: { value: couleur(PALETTE.brumeSoleil) },
   uSoleilDir: U_CIEL.uSoleil,
-  uBrumeDist: { value: new THREE.Vector2(70, 560) },
+  uBrumeDist: { value: new THREE.Vector2(150, 1150) },
 };
 const GLSL_BRUME = /* glsl */`
   uniform vec3 uBrume, uBrumeSoleil, uSoleilDir;
@@ -276,7 +307,7 @@ const GLSL_BRUME = /* glsl */`
     float f = smoothstep(uBrumeDist.x, uBrumeDist.y, d);
     vec3 v = normalize(p - cameraPosition);
     float s = pow(max(dot(v, uSoleilDir), 0.0), 5.0);
-    float basse = smoothstep(-6.0, -34.0, p.y) * 0.55;
+    float basse = smoothstep(-14.0, -78.0, p.y) * 0.55;
     vec3 fc = mix(uBrume, uBrumeSoleil, s * 0.85);
     return mix(c, fc, clamp(f + basse * (1.0 - f), 0.0, 1.0));
   }`;
@@ -464,11 +495,17 @@ async function demarrer() {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(44, window.innerWidth / window.innerHeight, 0.15, 3000);
 
-  /* ----- chargement de l'île, des atlas (taille 1024 d'abord) et des feuilles ----- */
+  /* ----- chargement du royaume, des atlas (taille 1024 d'abord) et des feuilles ----- */
   let progGlb = 0, progTex = 0, nbTex = 5;
   const maj = () => afficherProgression(progGlb * 0.65 + (progTex / nbTex) * 0.35);
   const draco = new DRACOLoader().setDecoderPath("../lib/three/libs/draco/gltf/");
   const chargeur = new GLTFLoader().setDRACOLoader(draco);
+  // Carte de marche et chemins des habitants : sans eux, le royaume s'affiche quand même (sans habitants)
+  const promesseChemins = fetch("assets/royaume.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  const promesseCarte = fetch("assets/royaume_carte.png")
+    .then((r) => { if (!r.ok) throw new Error(String(r.status)); return r.blob(); })
+    .then((b) => createImageBitmap(b, { colorSpaceConversion: "none", premultiplyAlpha: "none" }))
+    .catch(() => null);
   let gltf;
   try {
     gltf = await chargeur.loadAsync("assets/ile.glb", (e) => { if (e.total) { progGlb = e.loaded / e.total; maj(); } });
@@ -484,12 +521,16 @@ async function demarrer() {
   const atlas = new Map();       // nom de l'atlas -> { matieres, tailleMax, abonnes }
   const vivants = [];
   const flottants = [];
-  let terrain = null, feuillage = null;
+  const terrains = [];
+  const pieces = [];             // pièces des personnages (tête, bras, jambes...), recopiées par Peuple
+  let feuillage = null;
   ile.traverse((o) => {
     parNom.set(o.name, o);
     if (!o.isMesh) return;
     const d = Object.keys(o.userData).length ? o.userData : (o.parent ? o.parent.userData : {});
-    if (d.atlas) {
+    if (d.vivant === "piece") {
+      pieces.push({ objet: o, nom: d.piece });
+    } else if (d.atlas) {
       if (!atlas.has(d.atlas)) atlas.set(d.atlas, { matiere: null, feuilles: null, tailleMax: d.atlas_max || 4096, abonnes: [] });
       const a = atlas.get(d.atlas);
       if (d.feuilles) {
@@ -501,13 +542,22 @@ async function demarrer() {
         o.material = a.matiere;
       }
       o.geometry.deleteAttribute("normal");
-      if (d.terrain) terrain = o;
+      if (d.terrain) terrains.push(o);
       if (d.mobile) flottants.push({ objet: o, base: o.position.clone(), ampl: d.flotte || 0.3, phase: Math.random() * 6.28 });
     } else if (d.vivant) {
       vivants.push({ objet: o, type: d.vivant, rang: d.rang || 0, projet: d.projet, donnees: d });
     }
   });
   nbTex = atlas.size + 1;
+  // Les pièces sortent de la scène : leur géométrie (rotation et échelle comprises) sert aux instances
+  const geometriesPieces = {};
+  for (const { objet, nom } of pieces) {
+    const m = objet.matrixWorld.clone().setPosition(0, 0, 0);
+    geometriesPieces[nom] = objet.geometry.clone().applyMatrix4(m);
+    objet.parent.remove(objet);
+    objet.geometry.dispose();
+  }
+  const atlasTerrains = new Set(terrains.map((t) => t.userData.atlas));
 
   const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const preparer = (tex, srgb = true) => {
@@ -523,14 +573,15 @@ async function demarrer() {
     for (const f of a.abonnes) f(tex);
   };
 
-  let texFeuilles, pixelsTerrain = null;
+  let texFeuilles;
+  const pixelsTerrains = new Map();    // atlas d'un sol -> pixels, pour colorer l'herbe
   const lumFeuille = { value: 0.3 };
   try {
     const promesses = [...atlas.entries()].map(([nom, a]) =>
       chargerBitmap(`assets/${nom}_1024.webp`).then((tex) => {
         a.texture = preparer(tex);
         a.taille = 1024;
-        if (a === atlas.get(terrain?.userData.atlas)) pixelsTerrain = pixels(tex.image);
+        if (atlasTerrains.has(nom)) pixelsTerrains.set(nom, pixels(tex.image));
         progTex++;
         maj();
       }));
@@ -591,8 +642,27 @@ async function demarrer() {
   };
   const soleil = position("soleil", U_CIEL.uSoleil.value.clone()).normalize();
   U_CIEL.uSoleil.value.copy(soleil);
-  const lieux = ptsCible.filter((_, i) => parNom.get(cles[i]).userData.chapitre > 0 && ptsCam[i].length() < 45)
-    .concat(ptsCam.filter((p, i) => parNom.get(cles[i]).userData.chapitre > 0 && p.length() < 45));
+
+  /* ----- carte de marche, chemins des habitants, repères des personnages ----- */
+  const [chemins, imageCarte] = await Promise.all([promesseChemins, promesseCarte]);
+  const carte = chemins && imageCarte ? new CarteMarche(imageCarte, chemins) : null;
+  const dehors = (p) => !carte || carte.interieur(p.x, p.z) === 0;
+  // Angle « regard » de Blender (direction cos r, sin r dans le plan XY) vers le cap d'un personnage du site
+  const capDepuisRegard = (r) => Math.atan2(Math.cos(r), -Math.sin(r));
+  const reperesPnj = {};
+  const guides = {};
+  for (const [nom, o] of parNom) {
+    if (!/^(pnj|guide)_/.test(nom)) continue;
+    const r = { pos: o.getWorldPosition(new THREE.Vector3()), regard: capDepuisRegard(o.userData.regard || 0), role: o.userData.role };
+    if (nom.startsWith("pnj_")) reperesPnj[nom] = r; else guides[nom] = r;
+  }
+  // Les lieux des chapitres, dehors : l'herbe y est plus dense, les lucioles s'y rassemblent
+  const lieux = [];
+  cles.forEach((n, i) => {
+    if (!(parNom.get(n).userData.chapitre > 0)) return;
+    for (const p of [ptsCible[i], ptsCam[i]]) if (p.length() < 150 && dehors(p)) lieux.push(p);
+  });
+  for (const g of Object.values(guides)) if (dehors(g.pos)) lieux.push(g.pos);
 
   /* ----- ciel ----- */
   const ciel = new THREE.Mesh(
@@ -650,7 +720,7 @@ async function demarrer() {
       varying vec3 vMonde;
       ${GLSL_BRUIT}
       void main() {
-        vec2 p = vMonde.xz * 0.0085 + vec2(uTemps * 0.006, uTemps * 0.0025) + uGraine;
+        vec2 p = vMonde.xz * 0.0062 + vec2(uTemps * 0.005, uTemps * 0.002) + uGraine;
         float n = fbm(p + 0.35 * vec2(fbm(p * 0.7 + 4.0), fbm(p * 0.7 - 3.0)));
         float seuil = mix(0.36, 0.5, uCouche);
         float densite = smoothstep(seuil, seuil + 0.22, n);
@@ -669,7 +739,7 @@ async function demarrer() {
     const n = QUALITE.couchesNuages;
     const plan = new THREE.Mesh(new THREE.PlaneGeometry(3000, 3000), matNuage(k, n));
     plan.rotation.x = -Math.PI / 2;
-    plan.position.y = -56 + (k / Math.max(1, n - 1)) * 26;
+    plan.position.y = -112 + (k / Math.max(1, n - 1)) * 34;
     plan.renderOrder = -5 + k;
     plan.frustumCulled = false;
     scene.add(plan);
@@ -680,15 +750,15 @@ async function demarrer() {
   const rnd = hasard(7);
   const texNuage = textureNuage(rnd);
   const nuagesProches = [];
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < 22; i++) {
     const a = rnd() * Math.PI * 2;
-    const r = 55 + rnd() * 75;
+    const r = 150 + rnd() * 170;
     const s = new THREE.Sprite(new THREE.SpriteMaterial({
       map: texNuage, color: couleur(i % 3 ? PALETTE.nuageClair : PALETTE.milieu), transparent: true,
       opacity: 0.2 + rnd() * 0.2, depthWrite: false, fog: false,
     }));
-    s.position.set(Math.cos(a) * r, -28 + rnd() * 24, Math.sin(a) * r);
-    s.scale.set(40 + rnd() * 45, 16 + rnd() * 12, 1);
+    s.position.set(Math.cos(a) * r, -72 + rnd() * 46, Math.sin(a) * r);
+    s.scale.set(90 + rnd() * 90, 32 + rnd() * 24, 1);
     s.userData.vitesse = 0.3 + rnd() * 0.5;
     scene.add(s);
     nuagesProches.push(s);
@@ -725,9 +795,9 @@ async function demarrer() {
         gl_FragColor = vec4(c, 0.88);
       }`,
   });
-  const matEau = (ecoulement) => new THREE.ShaderMaterial({
+  const matEau = (ecoulement, bassin = 0) => new THREE.ShaderMaterial({
     transparent: true, depthWrite: false,
-    uniforms: { ...U_CIEL, ...U_BRUME, uTemps: U_TEMPS, uEcoulement: { value: ecoulement } },
+    uniforms: { ...U_CIEL, ...U_BRUME, uTemps: U_TEMPS, uEcoulement: { value: ecoulement }, uBassin: { value: bassin } },
     vertexShader: /* glsl */`
       varying vec2 vUv; varying vec3 vMonde;
       void main() {
@@ -737,7 +807,7 @@ async function demarrer() {
         gl_Position = projectionMatrix * viewMatrix * m;
       }`,
     fragmentShader: /* glsl */`
-      uniform float uTemps, uEcoulement;
+      uniform float uTemps, uEcoulement, uBassin;
       varying vec2 vUv; varying vec3 vMonde;
       ${GLSL_BRUIT}
       ${GLSL_CIEL}
@@ -760,13 +830,90 @@ async function demarrer() {
         float bord = min(vUv.x, 1.0 - vUv.x);
         float ecume = smoothstep(0.2, 0.0, bord) * smoothstep(0.35, 0.75, fbm(q * 4.0)) * uEcoulement;
         c = mix(c, vec3(0.9, 0.86, 0.92), ecume * 0.55);
-        float alpha = smoothstep(0.0, 0.1, bord) * 0.93;
+        // Le bassin de la fontaine n'a pas de rive : il est opaque jusqu'à la margelle
+        float alpha = mix(smoothstep(0.0, 0.1, bord), 1.0, uBassin) * 0.93;
         gl_FragColor = vec4(brume(c, vMonde), alpha);
       }`,
   });
+  // Matière éclairée en temps réel (ailes du moulin) : même brume que le reste
+  const matiereEclairee = (teinte) => {
+    const m = new THREE.MeshLambertMaterial({ color: couleur(teinte) });
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, U_BRUME);
+      sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nvarying vec3 vMonde;")
+        .replace("#include <project_vertex>", "#include <project_vertex>\nvMonde = (modelMatrix * vec4(transformed, 1.0)).xyz;");
+      sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vMonde;\n" + GLSL_BRUME)
+        .replace("#include <dithering_fragment>", "gl_FragColor.rgb = brume(gl_FragColor.rgb, vMonde);\n#include <dithering_fragment>");
+    };
+    m.customProgramCacheKey = () => "eclairee";
+    return m;
+  };
   for (const v of vivants) {
     const o = v.objet;
     o.geometry.computeBoundingBox();
+    if (v.type === "moulin") {
+      // Les ailes tournent autour de leur moyeu, sur l'axe horizontal tourné vers l'extérieur
+      const moyeu = position("moulin_moyeu");
+      const local = moyeu ? o.worldToLocal(moyeu.clone()) : o.geometry.boundingBox.getCenter(new THREE.Vector3());
+      o.geometry.translate(-local.x, -local.y, -local.z);
+      o.position.add(local);
+      const d = v.donnees;
+      const axe = new THREE.Vector3(d.axe_x || 1, d.axe_z || 0, -(d.axe_y || 0)).normalize();
+      const base = o.quaternion.clone(), tourne = new THREE.Quaternion();
+      o.material = matiereEclairee(0x8f7a64);
+      animes.push((t) => { o.quaternion.multiplyQuaternions(tourne.setFromAxisAngle(axe, -t * 0.55), base); });
+      continue;
+    }
+    if (v.type === "leds") {
+      // Voyants de la baie du NAS : chaque voyant clignote à son rythme. Pour savoir quel sommet appartient
+      // à quel voyant, on regroupe les triangles qui se touchent (une face), puis on recule du centre de la
+      // face vers le centre du petit cube : les faces d'un même voyant tombent au même endroit.
+      const g = o.geometry, P = g.getAttribute("position"), N = g.getAttribute("normal"), I = g.index;
+      const parent = Int32Array.from({ length: P.count }, (_, i) => i);
+      const chef = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+      if (I) {
+        for (let k = 0; k < I.count; k += 3) {
+          const a = chef(I.getX(k));
+          parent[chef(I.getX(k + 1))] = a;
+          parent[chef(I.getX(k + 2))] = a;
+        }
+      }
+      const faces = new Map(), p = new THREE.Vector3(), n = new THREE.Vector3();
+      for (let k = 0; k < P.count; k++) {
+        const r = chef(k);
+        if (!faces.has(r)) faces.set(r, { p: new THREE.Vector3(), n: new THREE.Vector3(), c: 0 });
+        const f = faces.get(r);
+        f.p.add(p.fromBufferAttribute(P, k));
+        if (N) f.n.add(n.fromBufferAttribute(N, k));
+        f.c++;
+      }
+      const centres = [], voyantDe = new Map();
+      for (const [r, f] of faces) {
+        const c = f.p.divideScalar(f.c).addScaledVector(f.n.divideScalar(f.c), -0.0115);
+        let j = centres.findIndex((q) => q.distanceToSquared(c) < 0.0004);
+        if (j < 0) { centres.push(c); j = centres.length - 1; }
+        voyantDe.set(r, j);
+      }
+      const id = new Float32Array(P.count);
+      for (let k = 0; k < P.count; k++) id[k] = voyantDe.get(chef(k));
+      g.setAttribute("aVoyant", new THREE.BufferAttribute(id, 1));
+      o.material = new THREE.ShaderMaterial({
+        uniforms: { uTemps: U_TEMPS },
+        vertexShader: /* glsl */`
+          attribute float aVoyant; varying float vV;
+          void main() { vV = aVoyant; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: /* glsl */`
+          uniform float uTemps; varying float vV;
+          float h(float x) { return fract(sin(x * 91.17 + 7.3) * 43758.5453); }
+          void main() {
+            float k = h(floor(vV + 0.5));
+            float allume = step(0.3, fract(uTemps * (0.3 + k * 1.9) + k * 7.0));
+            vec3 c = k < 0.78 ? vec3(0.35, 1.0, 0.55) : vec3(1.0, 0.68, 0.25);
+            gl_FragColor = vec4(c * mix(0.2, 3.0, allume), 1.0);
+          }`,
+      });
+      continue;
+    }
     if (["glyphe", "anneau", "cristal", "cristal_roche"].includes(v.type)) {
       // Ces objets sont exportés avec leurs sommets en coordonnées du monde : on les recentre
       const centre = o.geometry.boundingBox.getCenter(new THREE.Vector3());
@@ -786,7 +933,7 @@ async function demarrer() {
       const teinte = couleur(couleursCristal[v.projet] || 0xffffff);
       const m = matCristal(teinte);
       o.material = m;
-      const h = halo(o.position, teinte.getHex(), 2.6, 0.55);
+      const h = halo(o.position, teinte.getHex(), 1.6, 0.45);
       const base = o.position.clone();
       animes.push((t) => {
         o.rotation.y = t * 0.5 + v.rang;
@@ -799,7 +946,7 @@ async function demarrer() {
       o.material = m;
       animes.push((t) => { m.uniforms.uPulse.value = 0.5 + 0.5 * Math.sin(t * 0.8); });
     } else if (v.type === "eau") {
-      o.material = matEau(v.donnees.ecoulement ? 1 : 0);
+      o.material = matEau(v.donnees.ecoulement ? 1 : 0, v.donnees.bassin ? 1 : 0);
       o.renderOrder = 2;
     } else if (v.type === "cascade") {
       const chute = v.donnees.chute || 40;
@@ -837,22 +984,104 @@ async function demarrer() {
     }
   }
 
-  /* ----- halos : lanternes, lampe du phare, cristaux sous l'île ----- */
+  /* ----- halos : lanternes, lustres, lampe du phare, cristaux sous l'île ----- */
   for (const [nom, o] of parNom) {
-    if (/^lanterne_/.test(nom)) {
-      const s = halo(o.getWorldPosition(new THREE.Vector3()), 0xffa94d, /chemin/.test(nom) ? 1.6 : 1.4, 0.8);
-      const ph = Math.random() * 10;
-      animes.push((t) => { s.material.opacity = 0.68 + 0.14 * Math.sin(t * 7.0 + ph) * Math.sin(t * 2.3 + ph); });
+    if (/^(lanterne|lustre)_/.test(nom)) {
+      const lustre = nom.startsWith("lustre");
+      const taille = lustre ? 1.1 : /chemin|porte/.test(nom) ? 1.6 : /atelier|taverne/.test(nom) ? 0.9 : 1.3;
+      const s = halo(o.getWorldPosition(new THREE.Vector3()), lustre ? 0xffb860 : 0xffa94d, taille, lustre ? 0.35 : 0.8);
+      const ph = Math.random() * 10, base = s.material.opacity;
+      animes.push((t) => { s.material.opacity = base * (0.85 + 0.17 * Math.sin(t * 7.0 + ph) * Math.sin(t * 2.3 + ph)); });
     } else if (/^cristal_roche_/.test(nom)) {
-      halo(o.getWorldPosition(new THREE.Vector3()), 0x93c5fd, 4.5, 0.4);
+      halo(o.getWorldPosition(new THREE.Vector3()), 0x93c5fd, 6, 0.4);
     }
+  }
+
+  /* ----- feux : braseros de la cour, cheminée de la grande salle, foyer de la forge ----- */
+  {
+    const c = document.createElement("canvas");
+    c.width = 64; c.height = 128;
+    const g = c.getContext("2d");
+    const d = g.createRadialGradient(32, 92, 2, 32, 80, 60);
+    d.addColorStop(0, "rgba(255,255,255,1)");
+    d.addColorStop(0.25, "rgba(255,255,255,0.6)");
+    d.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = d;
+    g.beginPath();
+    g.ellipse(32, 80, 22, 46, 0, 0, Math.PI * 2);
+    g.fill();
+    const texFlamme = new THREE.CanvasTexture(c);
+    texFlamme.colorSpace = THREE.SRGBColorSpace;
+    for (const [nom, o] of parNom) {
+      if (!/^feu_/.test(nom)) continue;
+      const p = o.getWorldPosition(new THREE.Vector3());
+      const e = /brasero/.test(nom) ? 0.9 : /forge/.test(nom) ? 0.8 : 1.0;
+      const langues = [];
+      for (let k = 0; k < 6; k++) {
+        const s = new THREE.Sprite(new THREE.SpriteMaterial({
+          map: texFlamme, color: couleur(k < 2 ? 0xffd58a : 0xff7a2e), transparent: true, opacity: 0,
+          blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
+        }));
+        scene.add(s);
+        langues.push({ s, decalage: k / 6, cote: (k % 3 - 1) * 0.12 });
+      }
+      const lueur = halo(p.clone().add(new THREE.Vector3(0, 0.35 * e, 0)), 0xff8a3d, 3.4 * e, 0.45);
+      const ph = Math.random() * 10;
+      animes.push((t) => {
+        for (const l of langues) {
+          const k = (t * 1.5 + l.decalage) % 1;
+          l.s.position.set(p.x + (l.cote + Math.sin(t * 5 + l.decalage * 9) * 0.04) * e, p.y + k * 0.75 * e, p.z + Math.cos(t * 4.3 + l.decalage * 7) * 0.05 * e);
+          const taille = (0.65 - k * 0.45) * e;
+          l.s.scale.set(taille, taille * 1.7, 1);
+          l.s.material.opacity = Math.sin(Math.PI * k) * 0.85;
+        }
+        lueur.material.opacity = 0.4 + 0.1 * Math.sin(t * 9 + ph) * Math.sin(t * 3.7 + ph);
+      });
+    }
+  }
+
+  /* ----- jet de la fontaine, sur la place du marché ----- */
+  const jet = position("fontaine_jet");
+  if (jet) {
+    const n = MODESTE ? 70 : 140;
+    const graines = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { graines[i * 3] = rnd(); graines[i * 3 + 1] = rnd(); graines[i * 3 + 2] = rnd(); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+    g.setAttribute("aGraine", new THREE.BufferAttribute(graines, 3));
+    const gouttes = new THREE.Points(g, new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { uTemps: U_TEMPS, uJet: { value: jet }, uTaille: { value: 22 * QUALITE.ratio }, uCarte: { value: texHalo } },
+      vertexShader: /* glsl */`
+        uniform float uTemps, uTaille; uniform vec3 uJet; attribute vec3 aGraine; varying float vA;
+        void main() {
+          // Chaque goutte part du sommet, s'écarte et retombe dans le bassin (une parabole)
+          float k = fract(uTemps * 0.75 + aGraine.x);
+          float t = k * 1.05;
+          float a = aGraine.y * 6.2832;
+          float v = 0.5 + aGraine.z * 0.55;
+          vec3 p = uJet + vec3(cos(a) * v * t, 1.3 * t - 4.9 * t * t, sin(a) * v * t);
+          vec4 mv = viewMatrix * vec4(p, 1.0);
+          vA = (1.0 - smoothstep(0.75, 1.0, k)) * 0.55;
+          gl_PointSize = uTaille / -mv.z;
+          gl_Position = projectionMatrix * mv;
+        }`,
+      fragmentShader: /* glsl */`
+        uniform sampler2D uCarte; varying float vA;
+        void main() {
+          float a = texture2D(uCarte, gl_PointCoord).a * vA;
+          gl_FragColor = vec4(vec3(0.85, 0.9, 1.0) * a, a);
+        }`,
+    }));
+    gouttes.frustumCulled = false;
+    scene.add(gouttes);
   }
 
   const lampe = position("phare_lampe");
   if (lampe) {
-    halo(lampe, 0xffd59a, 7, 0.9);
-    const longueur = 75;
-    const cone = new THREE.CylinderGeometry(0.35, 7, longueur, 32, 1, true);
+    halo(lampe, 0xffd59a, 9, 0.9);
+    const longueur = 140;
+    const cone = new THREE.CylinderGeometry(0.4, 11, longueur, 32, 1, true);
     cone.translate(0, longueur / 2, 0);
     cone.rotateZ(-Math.PI / 2);
     const matFaisceau = new THREE.ShaderMaterial({
@@ -910,14 +1139,15 @@ async function demarrer() {
     });
   }
 
-  /* ----- fumée de la cheminée ----- */
-  const fumee = position("fumee");
-  if (fumee) {
+  /* ----- fumées : cheminée de la forge, maison du gardien du phare ----- */
+  for (const [nom, o] of parNom) {
+    if (!/^fumee/.test(nom)) continue;
+    const fumee = o.getWorldPosition(new THREE.Vector3());
     const bouffees = [];
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 16; i++) {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: texNuage, color: couleur(0xb9a7c9), transparent: true, opacity: 0, depthWrite: false }));
       scene.add(s);
-      bouffees.push({ s, decalage: i / 18 });
+      bouffees.push({ s, decalage: i / 16 });
     }
     animes.push((t) => {
       for (const b of bouffees) {
@@ -930,14 +1160,16 @@ async function demarrer() {
     });
   }
 
-  /* ----- herbe : des touffes posées sur le terrain, colorées par l'atlas cuit (ombres comprises) ----- */
-  let matHerbe = null;
-  if (terrain && pixelsTerrain) {
+  /* ----- herbe : des touffes posées sur les sols (ville, campagne), colorées par l'atlas cuit (ombres comprises) ----- */
+  const semis = [];
+  const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
+  for (const terrain of terrains) {
+    const pixelsTerrain = pixelsTerrains.get(terrain.userData.atlas);
+    if (!pixelsTerrain) continue;
     const geo = terrain.geometry;
     const P = geo.getAttribute("position"), UV = geo.getAttribute("uv"), I = geo.index;
     const nbTri = I ? I.count / 3 : P.count / 3;
     const cumul = new Float64Array(nbTri);
-    const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3(), ab = new THREE.Vector3(), ac = new THREE.Vector3();
     const sommet = (k) => (I ? I.getX(k) : k);
     let total = 0;
     for (let t = 0; t < nbTri; t++) {
@@ -952,15 +1184,20 @@ async function demarrer() {
         const cx = (va.x + vb.x + vc.x) / 3, cz = (va.z + vb.z + vc.z) / 3;
         let d = 1e9;
         for (const l of lieux) d = Math.min(d, Math.hypot(cx - l.x, cz - l.z));
-        poids = aire * (0.1 + Math.exp(-(d * d) / (17 * 17)));
+        poids = aire * (0.22 + Math.exp(-(d * d) / (26 * 26)));
       }
       total += poids;
       cumul[t] = total;
     }
-    const N = QUALITE.herbe;
+    semis.push({ terrain, pixelsTerrain, P, UV, nbTri, cumul, total, sommet });
+  }
+  const totalSemis = semis.reduce((s, x) => s + x.total, 0);
+  for (const { terrain, pixelsTerrain, P, UV, nbTri, cumul, total, sommet } of semis) {
+    const N = Math.round(QUALITE.herbe * total / Math.max(1e-9, totalSemis));
+    if (N < 1) continue;
     const iPos = new Float32Array(N * 3), iUv = new Float32Array(N * 2), iParam = new Float32Array(N * 4);
     const { width: W, height: H, data: px } = pixelsTerrain;
-    const r2 = hasard(31);
+    const r2 = hasard(31 + semis.findIndex((s) => s.terrain === terrain));
     let n = 0;
     for (let essai = 0; essai < N * 4 && n < N; essai++) {
       const cible = r2() * total;
@@ -1018,7 +1255,7 @@ async function demarrer() {
     geoHerbe.instanceCount = n;
     geoHerbe.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, 0, 0), 80);
     const aTerrain = atlas.get(terrain.userData.atlas);
-    matHerbe = new THREE.ShaderMaterial({
+    const matHerbe = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
       uniforms: { ...U_BRUME, uTemps: U_TEMPS, uAtlas: { value: aTerrain.texture }, uDistMax: { value: MODESTE ? 30 : 46 } },
       vertexShader: /* glsl */`
@@ -1071,9 +1308,10 @@ async function demarrer() {
     const phase = new Float32Array(n);
     for (let i = 0; i < n; i++) {
       const l = lieux[i % Math.max(1, lieux.length)] || new THREE.Vector3();
-      pos[i * 3] = l.x + (rnd() - 0.5) * 18;
-      pos[i * 3 + 1] = l.y - 1.4 + rnd() * 3.4;
-      pos[i * 3 + 2] = l.z + (rnd() - 0.5) * 18;
+      const x = l.x + (rnd() - 0.5) * 30, z = l.z + (rnd() - 0.5) * 30;
+      pos[i * 3] = x;
+      pos[i * 3 + 1] = (carte ? carte.hauteur(x, z, l.y - 1.4) : l.y - 1.4) + 0.4 + rnd() * 2.8;
+      pos[i * 3 + 2] = z;
       phase[i] = rnd() * 100;
     }
     const g = new THREE.BufferGeometry();
@@ -1126,8 +1364,8 @@ async function demarrer() {
     for (let i = 0; i < nb; i++) {
       const volee = i % 2;
       params.push({
-        r: (volee ? 62 : 44) + rnd() * 8, h: (volee ? 16 : 9) + rnd() * 4, v: (volee ? 0.045 : -0.06) * (0.92 + rnd() * 0.16),
-        a: (volee ? 2.0 : 4.5) + rnd() * 0.6, d: rnd() * 6, e: 0.9 + rnd() * 0.5,
+        r: (volee ? 168 : 128) + rnd() * 14, h: (volee ? 46 : 32) + rnd() * 6, v: (volee ? 0.03 : -0.04) * (0.92 + rnd() * 0.16),
+        a: (volee ? 2.0 : 4.5) + rnd() * 0.6, d: rnd() * 6, e: 1.3 + rnd() * 0.6,
       });
     }
     const mat4 = new THREE.Matrix4(), q = new THREE.Quaternion(), ech = new THREE.Vector3(), p = new THREE.Vector3(), dir = new THREE.Vector3();
@@ -1144,6 +1382,45 @@ async function demarrer() {
       });
       oiseaux.instanceMatrix.needsUpdate = true;
     });
+  }
+
+  /* ----- habitants : le peuple, Ernest, les dialogues, le mode libre, les autres visiteurs ----- */
+  // Les personnages ne sont pas cuits : une lumière de ciel et le soleil couchant les éclairent.
+  // Quand la caméra entre dans un bâtiment, le soleil s'efface et la lumière devient celle des lanternes.
+  const lumiereCiel = new THREE.HemisphereLight(0xd6c0e6, 0x5e4a3a, 1.25);
+  const lumiereSoleil = new THREE.DirectionalLight(0xffc48e, 2.1);
+  lumiereSoleil.position.copy(soleil).multiplyScalar(200);
+  scene.add(lumiereCiel, lumiereSoleil);
+  const CIEL_DEHORS = couleur(0xd6c0e6), CIEL_DEDANS = couleur(0xffc58f);
+  const SOL_DEHORS = couleur(0x5e4a3a), SOL_DEDANS = couleur(0x4a3020);
+  let dedansLisse = 0;
+
+  let peuple = null, royaume = null, dialogue = null, exploration = null, multijoueur = null, ernest = -1;
+  const guideDuChapitre = (c) => guides[GUIDE_CHAPITRE[Math.max(0, Math.min(c, GUIDE_CHAPITRE.length - 1))]] || guides.guide_porte || null;
+  if (carte && chemins && Object.keys(geometriesPieces).length) {
+    try {
+      peuple = new Peuple(scene, geometriesPieces, { uniforms: U_BRUME, glsl: GLSL_BRUME }, QUALITE.habitants);
+      royaume = new Royaume(peuple, carte, chemins, reperesPnj, MODESTE);
+      const g = guideDuChapitre(1);
+      const depart = g ? g.pos.clone() : new THREE.Vector3();
+      if (g) depart.y = carte.hauteur(depart.x, depart.z, depart.y);
+      ernest = peuple.ajouterHumain({ ...ERNEST }, { pos: depart, cap: g ? g.regard : 0, anim: "repos" });
+      dialogue = new Dialogue(langue);
+      exploration = new Exploration({ camera, carte, peuple, ernest, dialogue, royaume, langue, canvas });
+      // Pendant la visite, les autres visiteurs se rassemblent autour d'Ernest, au lieu de leur chapitre
+      const rassemblements = {};
+      GUIDE_CHAPITRE.forEach((nom, c) => {
+        const r = guides[nom];
+        if (r) rassemblements[c] = new THREE.Vector3(r.pos.x, carte.hauteur(r.pos.x, r.pos.z, r.pos.y), r.pos.z);
+      });
+      multijoueur = new Multijoueur({ config: MULTIJOUEUR, peuple, langue, camera, guides: rassemblements });
+      multijoueur.demarrer().catch((e) => console.warn("[ile3d] temps réel indisponible :", e && e.message));
+      surLangue.push((l) => { dialogue.langue = l; exploration.langue = l; multijoueur.langue = l; });
+      racine.classList.add("avec-habitants");
+    } catch (e) {
+      console.warn("[ile3d] habitants indisponibles :", e);
+      peuple = royaume = dialogue = exploration = multijoueur = null;
+    }
   }
 
   /* ----- rendu : bloom léger, rayons de soleil, vignette et grain ----- */
@@ -1223,6 +1500,99 @@ async function demarrer() {
     }, { passive: true });
   }
 
+  /* ----- modes : visite guidée (défilement) ou mode libre (on marche avec Ernest) ----- */
+  let mode = "visite";
+  // Passage d'un mode à l'autre : la caméra glisse de son ancienne pose vers la nouvelle
+  const fondu = { k: 1, duree: 1, pos: new THREE.Vector3(), quat: new THREE.Quaternion(), fov: 44 };
+  const hud = document.querySelector(".hud-libre");
+  const boutonsLibre = [...document.querySelectorAll("[data-libre]")];
+  function changerMode(m) {
+    if (m === mode || (m === "libre" && !exploration)) return;
+    fondu.k = 0;
+    fondu.duree = m === "libre" ? 1.8 : 1.4;
+    fondu.pos.copy(camera.position);
+    fondu.quat.copy(camera.quaternion);
+    fondu.fov = camera.fov;
+    mode = m;
+    racine.classList.toggle("mode-libre", m === "libre");
+    if (hud) hud.hidden = m !== "libre";
+    if (m === "libre") {
+      // On part du lieu du chapitre en cours, là où Ernest attendait
+      // Ernest se tourne vers ce que regardait la visite (l'intérieur de la pièce, le cœur du royaume)
+      const g = guideDuChapitre(chapitreActuel);
+      const h = peuple.humains[ernest];
+      const depart = g ? g.pos : h.pos;
+      const cap = Math.hypot(vise.x - depart.x, vise.z - depart.z) > 1 ? Math.atan2(vise.x - depart.x, vise.z - depart.z) : h.cap;
+      exploration.activer(depart, cap);
+      dialogue.montrerBulle(null, 0, 0, 0);
+      pointeur.set(0, 0);
+    } else {
+      exploration.desactiver();
+      guideActuel = -1;
+      salueAuChapitre = -1;
+    }
+    boutonsLibre.forEach((b) => b.setAttribute("aria-pressed", String(m === "libre")));
+  }
+  boutonsLibre.forEach((b) => b.addEventListener("click", (e) => {
+    e.preventDefault();
+    changerMode(mode === "libre" ? "visite" : "libre");
+  }));
+  document.querySelector(".hud-retour")?.addEventListener("click", () => changerMode("visite"));
+  // Échap revient à la visite (sauf s'il ferme d'abord un dialogue) : écouté avant le mode libre
+  window.addEventListener("keydown", (e) => {
+    if (e.code !== "Escape" || mode !== "libre" || (dialogue && dialogue.ouvert)) return;
+    if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+    changerMode("visite");
+  }, true);
+  if (/[?&]libre\b/.test(location.search) && exploration) requestAnimationFrame(() => changerMode("libre"));
+
+  /* ----- Ernest pendant la visite : il attend au lieu de chaque chapitre, salue, puis présente ----- */
+  let guideActuel = -1, salueAuChapitre = -1, debutSalut = -10;
+  function majErnestVisite(e, t, dt) {
+    const h = peuple && peuple.humains[ernest];
+    if (!h) return;
+    const c = e.t > 0.5 ? e.vers : e.de;
+    const g = guideDuChapitre(c);
+    if (!g) return;
+    if (c !== guideActuel) {
+      guideActuel = c;
+      h.pos.set(g.pos.x, carte.hauteur(g.pos.x, g.pos.z, g.pos.y), g.pos.z);
+      h.cap = g.regard;
+    }
+    const arrete = e.de === e.vers;
+    if (arrete && salueAuChapitre !== c) { salueAuChapitre = c; debutSalut = t; }
+    // Il se tourne vers le visiteur (la caméra)
+    const vers = Math.atan2(camera.position.x - h.pos.x, camera.position.z - h.pos.z);
+    const ecart = ((vers - h.cap + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+    h.cap += ecart * Math.min(1, dt * 2.5);
+    h.anim = t - debutSalut < 2.4 ? "salut" : arrete ? "parle" : "repos";
+  }
+
+  /* ----- bulle du personnage du chapitre (visite guidée) ----- */
+  const ecranBulle = new THREE.Vector3();
+  function majBulle(y) {
+    if (!dialogue) return;
+    const cle = mode === "visite" ? BULLE_CHAPITRE[chapitreActuel] : null;
+    const n = cle && royaume && royaume.nommes[cle];
+    const h = n && peuple.humains[n.id];
+    if (!h) { dialogue.montrerBulle(null, 0, 0, 0); return; }
+    ecranBulle.set(h.pos.x, h.pos.y + 2.05, h.pos.z).project(camera);
+    const visible = ecranBulle.z < 1 && Math.abs(ecranBulle.x) < 0.9 && ecranBulle.y < 0.85 && ecranBulle.y > -0.6
+      && h.pos.distanceTo(camera.position) < 40;
+    const o = visible ? lisse(0.45, 0.95, opacitePanneau(chapitreActuel, y)) : 0;
+    let x = (ecranBulle.x + 1) / 2 * largeur;
+    const yb = (1 - ecranBulle.y) / 2 * hauteur;
+    // La bulle ne doit pas couvrir le texte du chapitre : on la pousse à côté du panneau
+    const panneau = panneaux[chapitreActuel];
+    if (o > 0 && panneau && !petitEcran()) {
+      const r = panneau.getBoundingClientRect(), demi = 140;
+      if (x + demi > r.left - 20 && x - demi < r.right + 20 && yb > r.top - 30 && yb - 100 < r.bottom) {
+        x = panneau.classList.contains("cote-droite") ? r.left - 20 - demi : r.right + 20 + demi;
+      }
+    }
+    dialogue.montrerBulle(cle, x, yb, o);
+  }
+
   /* ----- boucle ----- */
   const horloge = new THREE.Clock();
   let yLisse = window.scrollY;
@@ -1231,39 +1601,32 @@ async function demarrer() {
   let intro = !reduceMotion && window.scrollY < 10 ? 0 : 1;
   const pos = new THREE.Vector3(), vise = new THREE.Vector3(), droite = new THREE.Vector3(), haut2 = new THREE.Vector3();
   const versSoleil = new THREE.Vector3(), ecran = new THREE.Vector3(), regard = new THREE.Vector3();
+  const moi = { mode: "visite", chapitre: 0, pos: new THREE.Vector3(), cap: 0 };
 
-  function image() {
-    const dt = Math.min(horloge.getDelta(), 0.1);
-    const t = horloge.elapsedTime;
-    U_TEMPS.value = t;
-    const yCible = window.scrollY;
-    yLisse = reduceMotion ? yCible : yLisse + (yCible - yLisse) * (1 - Math.exp(-dt * 4.5));
-    if (Math.abs(yCible - yLisse) < 0.05) yLisse = yCible;
-    if (yCible > 10) intro = Math.max(intro, 0.999);
-    if (intro < 1) intro = Math.min(1, intro + dt / 4.2);
-
+  /* La caméra de la visite : un point du trajet choisi par le défilement */
+  function poseVisite(dt, t) {
     const e = etape(yLisse);
     const k = doux(Math.min(1, Math.max(0, e.t)));
     const u = THREE.MathUtils.lerp(uChapitre(e.de), uChapitre(e.vers), k);
     courbeCam.getPoint(u, pos);
     courbeCible.getPoint(u, vise);
-    // Écran en hauteur : les vues d'ensemble reculent pour garder toute l'île dans le cadre
+    // Écran en hauteur : les vues d'ensemble reculent pour garder tout le royaume dans le cadre
     const aspect = largeur / hauteur;
     if (aspect < 1.2) {
       const poids = (CHAPITRES_LARGES.has(e.de) ? 1 - k : 0) + (CHAPITRES_LARGES.has(e.vers) && e.vers !== e.de ? k : 0);
-      const recul = 1 + (Math.min(2.3, 1.45 / aspect) - 1) * Math.min(1, poids);
+      const recul = 1 + (Math.min(2.1, 1.35 / aspect) - 1) * Math.min(1, poids);
       pos.sub(vise).multiplyScalar(recul).add(vise);
     }
     if (intro < 1) {
       const ki = doux(intro);
-      const depart = regard.subVectors(pos, vise).multiplyScalar(1.7).add(vise).add(new THREE.Vector3(0, 28, 0));
+      const depart = regard.subVectors(pos, vise).multiplyScalar(1.6).add(vise).add(new THREE.Vector3(0, 60, 0));
       pos.lerpVectors(depart, pos, ki);
     }
 
     // Parallaxe et respiration, plus marquées sur les vues d'ensemble
     pointeurLisse.lerp(pointeur, 1 - Math.exp(-dt * 2.5));
     const distance = pos.distanceTo(vise);
-    const ampleur = THREE.MathUtils.clamp(distance * 0.06, 0.25, 4.0);
+    const ampleur = THREE.MathUtils.clamp(distance * 0.05, 0.12, 6.0);
     droite.subVectors(vise, pos).cross(camera.up).normalize();
     haut2.copy(camera.up);
     pos.addScaledVector(droite, pointeurLisse.x * ampleur);
@@ -1282,8 +1645,55 @@ async function demarrer() {
     camera.fov = fovA(u) * elargir * (petitEcran() ? 1.12 : 1);
     camera.aspect = (largeur + dx) / (hauteur + dy);
     camera.setViewOffset(largeur + dx, hauteur + dy, decalage > 0 ? 0 : dx, dy, largeur, hauteur);
+    if (peuple) majErnestVisite(e, t, dt);
+  }
+
+  function image() {
+    const dt = Math.min(horloge.getDelta(), 0.1);
+    const t = horloge.elapsedTime;
+    U_TEMPS.value = t;
+    const yCible = window.scrollY;
+    yLisse = reduceMotion ? yCible : yLisse + (yCible - yLisse) * (1 - Math.exp(-dt * 4.5));
+    if (Math.abs(yCible - yLisse) < 0.05) yLisse = yCible;
+    if (yCible > 10) intro = Math.max(intro, 0.999);
+    if (intro < 1) intro = Math.min(1, intro + dt / 4.2);
+
+    if (mode === "libre") {
+      exploration.maj(dt);
+      camera.clearViewOffset();
+      camera.aspect = largeur / hauteur;
+      camera.fov = THREE.MathUtils.clamp(58 * Math.max(1, 0.8 / (largeur / hauteur)), 58, 78);
+    } else {
+      poseVisite(dt, t);
+    }
+    if (fondu.k < 1) {
+      fondu.k = Math.min(1, fondu.k + dt / fondu.duree);
+      const k = doux(fondu.k);
+      camera.position.lerpVectors(fondu.pos, camera.position, k);
+      camera.quaternion.slerpQuaternions(fondu.quat, camera.quaternion, k);
+      camera.fov = THREE.MathUtils.lerp(fondu.fov, camera.fov, k);
+    }
     camera.updateProjectionMatrix();
     camera.updateMatrixWorld();
+
+    // Les habitants, Ernest et les autres visiteurs
+    if (peuple) {
+      royaume.maj(dt, t);
+      const h = peuple.humains[ernest];
+      moi.mode = mode;
+      moi.chapitre = chapitreActuel;
+      moi.pos.copy(h.pos);
+      moi.cap = h.cap;
+      multijoueur.maj(dt, moi);
+      peuple.maj(t, camera);
+      majBulle(yLisse);
+      const dedans = carte.interieur(camera.position.x, camera.position.z) > 0 ? 1 : 0;
+      dedansLisse += (dedans - dedansLisse) * Math.min(1, dt * 3);
+      lumiereSoleil.intensity = THREE.MathUtils.lerp(2.1, 0.3, dedansLisse);
+      lumiereCiel.intensity = THREE.MathUtils.lerp(1.25, 1.55, dedansLisse);
+      lumiereCiel.color.lerpColors(CIEL_DEHORS, CIEL_DEDANS, dedansLisse);
+      lumiereCiel.groundColor.lerpColors(SOL_DEHORS, SOL_DEDANS, dedansLisse);
+    }
 
     ciel.position.copy(camera.position);
     for (const n of nuages) n.material.uniforms.uCamera.value.copy(camera.position);
@@ -1296,7 +1706,7 @@ async function demarrer() {
       const face = regard.dot(soleil);
       ecran.copy(versSoleil.copy(soleil).multiplyScalar(1000).add(camera.position)).project(camera);
       const dansCadre = 1 - lisse(1.0, 1.6, Math.max(Math.abs(ecran.x), Math.abs(ecran.y)));
-      rayons.uniforms.uForce.value = lisse(0.25, 0.7, face) * dansCadre * 1.0;
+      rayons.uniforms.uForce.value = lisse(0.25, 0.7, face) * dansCadre * (1 - 0.8 * dedansLisse);
       rayons.uniforms.uSoleilEcran.value.set(ecran.x * 0.5 + 0.5, ecran.y * 0.5 + 0.5);
     }
 
