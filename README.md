@@ -14,14 +14,23 @@ Les trois versions existent en français et en anglais (bouton FR / EN, ou `?lan
 
 **Portfolio :** https://ernestjesutinafaton-maker.github.io · **Île en 3D :** https://ernestjesutinafaton-maker.github.io/3d/ · **Jeu :** https://ernestjesutinafaton-maker.github.io/jeu/
 
-![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)
+### L'île en 3D (`/3d/`)
+
+[![L'île en 3D : la vue d'ensemble au coucher du soleil, l'atelier (expérience), le cercle de pierres (compétences) et le phare (contact)](docs/apercu-3d.jpg)](https://ernestjesutinafaton-maker.github.io/3d/)
+
+### Le portfolio classique et la version jeu
+
+| Portfolio classique (`/`) | Version jeu (`/jeu/`) |
+|---|---|
+| [![La page d'accueil : présentation, boutons pour jouer ou voir les projets, lien vers l'île en 3D](docs/apercu-accueil.jpg)](https://ernestjesutinafaton-maker.github.io/) | [![Le Château, au centre de l'île : le panneau « À propos » ouvert à droite, le niveau en cours à gauche](docs/apercu.png)](https://ernestjesutinafaton-maker.github.io/jeu/) |
 
 > **In English:** my portfolio and blog. The home page is a classic one-page resume; the immersive version
 > ([/3d/](https://ernestjesutinafaton-maker.github.io/3d/?lang=en)) is a sunset island modeled by a Python script in
 > **Blender**, with lighting baked by Cycles and rendered by Three.js as you scroll; the game version is a 3D island
 > where every building is a part of my journey, with 5 bosses to fight in turn-based battles where questions about my
-> projects are your attacks. Both are available in English. Built with **C# (Blazor WebAssembly, .NET 10)**, **Three.js**,
-> xUnit and GitHub Actions. **[Portfolio](https://ernestjesutinafaton-maker.github.io/?lang=en)** · **[Play it](https://ernestjesutinafaton-maker.github.io/jeu/?lang=en)**
+> projects are your attacks. All three are available in English. Built with **C# (Blazor WebAssembly, .NET 10)**,
+> **Blender**, **Three.js**, xUnit and GitHub Actions. **[Portfolio](https://ernestjesutinafaton-maker.github.io/?lang=en)** ·
+> **[3D island](https://ernestjesutinafaton-maker.github.io/3d/?lang=en)** · **[Play it](https://ernestjesutinafaton-maker.github.io/jeu/?lang=en)**
 >
 > ⭐ Si le projet te plaît, une étoile sur GitHub m'aide beaucoup. If you like it, a star really helps!
 
@@ -136,7 +145,9 @@ dotnet run --project tools/ErnestWorld.Generator   # met à jour la liste des ar
 dotnet run --project src/ErnestWorld               # lance le site, puis ouvrir l'adresse affichée
 ```
 
-La page d'accueil s'ouvre à l'adresse affichée ; la version jeu est sous `/jeu/`.
+La page d'accueil s'ouvre à l'adresse affichée ; la version jeu est sous `/jeu/` et l'île en 3D sous `/3d/`.
+En local, le serveur de .NET renvoie la page d'accueil pour toute adresse qu'il ne connaît pas (`/jeu/`, `/journal`…) :
+un petit script en tête de `index.html` ouvre alors la bonne page, comme `404.html` le fait sur GitHub Pages.
 
 Tests : `dotnet test`
 
