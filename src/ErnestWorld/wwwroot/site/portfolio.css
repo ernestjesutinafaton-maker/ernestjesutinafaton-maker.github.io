@@ -213,6 +213,19 @@ button { font: inherit; }
 
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin: 30px 0 0; }
 
+/* Lien vers la version immersive (/3d/) */
+.lien-3d {
+  display: inline-flex; align-items: center; gap: 10px; margin-top: 18px; padding: 6px 14px 6px 6px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--surface);
+  color: var(--ink-2); font-size: 14px; font-weight: 500; text-decoration: none;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.lien-3d:hover { border-color: var(--line-2); color: var(--ink); }
+.lien-3d-badge {
+  padding: 3px 9px; border-radius: 999px; background: var(--grad-btn); color: #fff;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+}
+
 .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 40px 0 0; padding: 0; list-style: none; }
 .stats li { padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
 .stats strong { display: block; font: 700 1.5rem/1.2 var(--head); letter-spacing: -0.02em; }
