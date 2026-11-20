@@ -33,6 +33,15 @@
   <!-- Langue et thème appliqués avant l'affichage (même réglage que le jeu : « ernest-lang ») -->
   <script>
     (function () {
+      // En local (dotnet run), le serveur renvoie cette page pour toute adresse qu'il ne connaît pas,
+      // même /jeu/ et /3d/. On ouvre alors la bonne page, comme le fait 404.html sur GitHub Pages.
+      // En ligne, cette page n'est servie qu'à la racine : ce bloc ne s'y déclenche jamais.
+      var chemin = location.pathname;
+      if (chemin !== "/" && chemin !== "/index.html") {
+        if (/^\/3d\/?$/.test(chemin)) { location.replace("/3d/index.html" + location.search + location.hash); return; }
+        location.replace("/jeu/index.html?p=" + encodeURIComponent(chemin.replace(/^\//, "") + location.search) + location.hash);
+        return;
+      }
       // Anciens liens partagés quand l'île était à la racine (/?lieu=forge, /?combat=golem) : on les envoie au jeu.
       if (/[?&](lieu|combat|p)=/.test(location.search)) { location.replace("jeu/" + location.search + location.hash); return; }
       var d = document.documentElement, lang = null;
