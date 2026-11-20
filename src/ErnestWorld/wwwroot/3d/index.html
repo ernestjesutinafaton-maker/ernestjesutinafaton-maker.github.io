@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-  L'ÎLE EN 3D · version immersive du portfolio d'Ernest Afaton
+  LE ROYAUME EN 3D · version immersive du portfolio d'Ernest Afaton
   L'île est modélisée dans Blender par un script (tools/blender/ile.py), sa lumière est calculée par Cycles
   et enregistrée dans des textures, puis Three.js l'affiche ici (ile3d.js). Le défilement de la page guide
   la caméra d'un lieu à l'autre ; chaque chapitre est une vraie section HTML, lisible même sans la 3D.
@@ -11,18 +11,18 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-  <title>Ernest Afaton · L'île en 3D</title>
-  <meta name="description" content="Le portfolio d'Ernest Afaton en version immersive : une île en 3D au coucher du soleil, modélisée et éclairée dans Blender, à parcourir en faisant défiler la page.">
+  <title>Ernest Afaton · Le royaume en 3D</title>
+  <meta name="description" content="Le portfolio d'Ernest Afaton en version immersive : un royaume fortifié sur une île volante au coucher du soleil, modélisé et éclairé dans Blender. Visite guidée, ou promenade libre pour parler aux habitants.">
   <meta name="theme-color" content="#120d14">
   <link rel="canonical" href="https://ernestjesutinafaton-maker.github.io/3d/">
 
-  <meta property="og:title" content="Ernest Afaton · L'île en 3D">
-  <meta property="og:description" content="Mon portfolio en version immersive : une île modélisée dans Blender, à explorer au défilement.">
+  <meta property="og:title" content="Ernest Afaton · Le royaume en 3D">
+  <meta property="og:description" content="Mon portfolio en version immersive : un royaume modélisé dans Blender, à visiter et à explorer librement.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://ernestjesutinafaton-maker.github.io/3d/">
   <meta property="og:image" content="https://ernestjesutinafaton-maker.github.io/3d/assets/affiche.webp">
   <meta name="twitter:card" content="summary_large_image">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%238B5CF6'/%3E%3Cstop offset='1' stop-color='%23D946EF'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-weight='700' font-size='26' fill='white'%3EEA%3C/text%3E%3C/svg%3E">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23e9a466'/%3E%3Cstop offset='1' stop-color='%23b5532b'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='64' height='64' rx='16' fill='url(%23g)'/%3E%3Ctext x='32' y='42' text-anchor='middle' font-family='Arial' font-weight='700' font-size='26' fill='white'%3EEA%3C/text%3E%3C/svg%3E">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -69,6 +69,10 @@
       <a href="../" data-i18n="nav.classic">Version classique</a>
       <a href="../jeu/" data-i18n="nav.game">Version jeu</a>
     </nav>
+    <button type="button" class="bouton-libre" data-libre aria-pressed="false">
+      <span class="si-visite" data-i18n="libre.entrer">Explorer librement</span>
+      <span class="si-libre" data-i18n="libre.retour">Revenir à la visite</span>
+    </button>
     <div class="lang-switch" role="group" aria-label="Langue / Language">
       <button type="button" data-set-lang="fr" lang="fr" aria-pressed="true">FR</button>
       <button type="button" data-set-lang="en" lang="en" aria-pressed="false">EN</button>
@@ -96,8 +100,9 @@
           <p class="statut"><span class="point" aria-hidden="true"></span><span data-i18n="hero.status">Disponible pour un stage de 4 à 5 semaines</span></p>
           <h1 id="t0"><span class="bonjour" data-i18n="hero.hello">Bonjour, je suis</span>Ernest <em>Afaton</em></h1>
           <p class="role" data-i18n="hero.role">Développeur web et mobile · Systèmes et réseaux · IoT</p>
-          <p data-i18n="hero.lead">Bienvenue sur mon île : mon portfolio en version immersive. Fais défiler la page, chaque lieu raconte une partie de mon parcours.</p>
-          <p class="indice" aria-hidden="true"><span class="souris"><i></i></span><span data-i18n="hero.cue">Défiler pour explorer</span></p>
+          <p data-i18n="hero.lead">Bienvenue dans mon royaume : mon portfolio en version immersive. Fais défiler pour suivre la visite guidée, ou explore librement, entre dans les bâtiments et parle aux habitants.</p>
+          <p class="indice" aria-hidden="true"><span class="souris"><i></i></span><span data-i18n="hero.cue">Défiler pour la visite</span></p>
+          <div class="actions actions-libre"><button type="button" class="bouton bouton-plein" data-libre><span data-i18n="libre.entrer">Explorer librement</span></button></div>
         </div>
       </div>
     </section>
@@ -106,7 +111,7 @@
     <section class="chapitre" id="ch1" data-chapitre="1" aria-labelledby="t1">
       <div class="scene-texte">
         <div class="panneau cote-gauche">
-          <p class="surtitre"><span>01</span> <span data-i18n="about.eyebrow">L'arche · À propos</span></p>
+          <p class="surtitre"><span>01</span> <span data-i18n="about.eyebrow">La porte du royaume · À propos</span></p>
           <h2 id="t1" data-i18n="about.title">Comprendre comment les choses fonctionnent, puis les construire.</h2>
           <p data-i18n="about.p1">Je suis en 2<sup>e</sup> année de Bachelor Informatique à l'EPSI Lyon, parcours Conception et Développement, et je prépare aussi le BTS SIO option SLAM (session 2027).</p>
           <p data-i18n="about.p2">J'aime descendre dans les couches : d'un framework PHP écrit sans librairie jusqu'à un serveur NAS conteneurisé accessible à distance.</p>
@@ -139,9 +144,9 @@
     <section class="chapitre" id="ch3" data-chapitre="3" aria-labelledby="t3">
       <div class="scene-texte">
         <div class="panneau cote-gauche panneau-large">
-          <p class="surtitre"><span>03</span> <span data-i18n="skills.eyebrow">Le cercle de pierres · Compétences</span></p>
+          <p class="surtitre"><span>03</span> <span data-i18n="skills.eyebrow">La bibliothèque des guildes · Compétences</span></p>
           <h2 id="t3" data-i18n="skills.title">Du code à l'infrastructure.</h2>
-          <p data-i18n="skills.sub">Sept pierres, sept familles de compétences.</p>
+          <p data-i18n="skills.sub">Sept bannières, sept familles de compétences.</p>
           <ul class="competences">
             <li><strong data-i18n="sk.web">Développement web</strong><span>Next.js · React · Symfony · Laravel · Three.js</span></li>
             <li><strong data-i18n="sk.cs">C# et .NET</strong><span>Blazor WebAssembly · .NET 10 · xUnit</span></li>
@@ -159,7 +164,7 @@
     <section class="chapitre" id="ch4" data-chapitre="4" aria-labelledby="t4">
       <div class="scene-texte">
         <div class="panneau cote-gauche">
-          <p class="surtitre"><span>04</span> <span data-i18n="proj.eyebrow">Les cristaux · Projets</span></p>
+          <p class="surtitre"><span>04</span> <span data-i18n="proj.eyebrow">La grande salle · Projets</span></p>
           <h2 id="t4" data-i18n="proj.title">Ce que j'ai construit.</h2>
           <ul class="projets">
             <li class="projet vert">
@@ -201,9 +206,9 @@
           <p class="autres">
             <a href="../" data-i18n="contact.classic">Portfolio classique</a> ·
             <a href="../jeu/" data-i18n="contact.game">Version jeu</a> ·
-            <a href="https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/tree/main/tools/blender" target="_blank" rel="noopener" data-i18n="contact.how">Comment l'île est faite</a>
+            <a href="https://github.com/ernestjesutinafaton-maker/ernestjesutinafaton-maker.github.io/tree/main/tools/blender" target="_blank" rel="noopener" data-i18n="contact.how">Comment le royaume est fait</a>
           </p>
-          <p class="credit" data-i18n="contact.credit">Île modélisée par un script Python dans Blender, lumière calculée par Cycles, affichée avec Three.js.</p>
+          <p class="credit" data-i18n="contact.credit">Royaume modélisé par un script Python dans Blender, lumière calculée par Cycles, affiché avec Three.js.</p>
         </div>
       </div>
     </section>
@@ -213,33 +218,78 @@
       <div class="scene-texte">
         <div class="panneau cote-gauche">
           <p class="surtitre"><span>06</span> <span data-i18n="end.eyebrow">Fin du voyage</span></p>
-          <h2 id="t6" data-i18n="end.title">Merci d'avoir exploré mon île.</h2>
-          <p data-i18n="end.text">Tout le parcours existe aussi en portfolio sur une seule page, et en jeu avec des boss à vaincre.</p>
+          <h2 id="t6" data-i18n="end.title">Merci d'avoir visité mon royaume.</h2>
+          <p data-i18n="end.text">Promène-toi maintenant à ta guise : chaque bâtiment s'ouvre et les habitants ont beaucoup à raconter. Tout le parcours existe aussi en portfolio sur une seule page, et en jeu.</p>
           <div class="actions">
             <a class="bouton" href="#ch0" data-aller="0">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6"/></svg>
               <span data-i18n="end.top">Revenir au début</span>
             </a>
+            <button type="button" class="bouton bouton-plein" data-libre><span data-i18n="libre.entrer">Explorer librement</span></button>
             <a class="bouton" href="../" data-i18n="end.classic">Portfolio classique</a>
-            <a class="bouton bouton-plein" href="../jeu/" data-i18n="end.game">Jouer à la version jeu</a>
+            <a class="bouton" href="../jeu/" data-i18n="end.game">Jouer à la version jeu</a>
           </div>
         </div>
       </div>
     </section>
   </main>
 
+  <!-- Royaume : étiquettes des visiteurs, bulle du personnage du chapitre -->
+  <div class="etiquettes" aria-hidden="true"></div>
+  <div class="bulle" aria-hidden="true"><span class="bulle-nom"></span><span class="bulle-texte"></span></div>
+
+  <!-- Mode libre -->
+  <div class="hud-libre" hidden>
+    <p class="hud-aide">
+      <span class="aide-clavier" data-i18n="libre.clavier"><kbd>ZQSD</kbd> ou flèches pour marcher · <kbd>Maj</kbd> pour courir · glisser pour regarder · <kbd>E</kbd> pour parler · <kbd>Échap</kbd> pour revenir</span>
+      <span class="aide-tactile" data-i18n="libre.tactile">Joystick pour marcher · glisser à droite pour regarder</span>
+    </p>
+    <button type="button" class="hud-retour" data-i18n="libre.retour">Revenir à la visite</button>
+  </div>
+  <div class="joystick" aria-hidden="true"><span></span></div>
+  <button type="button" class="invite" hidden><kbd>E</kbd> <span data-i18n="libre.parlerA">Parler à</span> <span class="invite-nom"></span></button>
+  <button type="button" class="bouton-parler" hidden data-i18n="libre.parler">Parler</button>
+
+  <section class="dialogue" hidden role="dialog" aria-live="polite" aria-labelledby="dialogue-nom">
+    <p class="dialogue-role"></p>
+    <h2 class="dialogue-nom" id="dialogue-nom"></h2>
+    <p class="dialogue-texte"></p>
+    <div class="dialogue-pied">
+      <span class="dialogue-compteur"></span>
+      <button type="button" class="dialogue-fermer" data-i18n="dialogue.fermer">Fermer</button>
+      <button type="button" class="dialogue-suivant">Suivant</button>
+    </div>
+  </section>
+
+  <!-- Visiteurs présents et chat (actifs seulement si config-multijoueur.js est rempli) -->
+  <button type="button" class="presence" aria-expanded="false" aria-controls="chat" data-i18n-attr="aria-label=presence.label" aria-label="Visiteurs en ligne : ouvrir le chat">
+    <span class="presence-point" aria-hidden="true"></span><span class="presence-nombre">1</span> <span class="presence-texte">en ligne</span>
+  </button>
+  <section class="chat" id="chat" hidden aria-labelledby="chat-titre">
+    <div class="chat-tete">
+      <p id="chat-titre" data-i18n="chat.titre">Les visiteurs présents</p>
+      <button type="button" class="chat-fermer" data-i18n-attr="aria-label=chat.fermer" aria-label="Fermer le chat">×</button>
+    </div>
+    <ul class="chat-messages" aria-live="polite"></ul>
+    <form class="chat-formulaire">
+      <input class="chat-saisie" type="text" maxlength="200" autocomplete="off" data-i18n-attr="placeholder=chat.placeholder" placeholder="Écrire un message…">
+      <button type="submit" data-i18n="chat.envoyer">Envoyer</button>
+    </form>
+    <p class="chat-note" data-i18n="chat.note">Rien n'est enregistré : seuls les visiteurs présents voient ces messages.</p>
+  </section>
+
   <!-- Écran de chargement -->
   <div class="chargement" role="status" aria-live="polite">
     <div class="chargement-contenu">
       <span class="logo-mark grand" aria-hidden="true">EA</span>
-      <p class="chargement-titre" data-i18n="load.title">L'île se prépare…</p>
+      <p class="chargement-titre" data-i18n="load.title">Le royaume se prépare…</p>
       <div class="barre-chargement" aria-hidden="true"><span></span></div>
       <p class="chargement-pourcent" aria-hidden="true">0 %</p>
       <a class="chargement-lien" href="../" data-i18n="load.classic">Voir plutôt la version classique</a>
     </div>
   </div>
 
-  <p class="sans-3d-note" role="note" data-i18n="no3d">La 3D n'a pas pu démarrer sur cet appareil : voici l'île en image, et tout le contenu reste lisible.</p>
+  <p class="sans-3d-note" role="note" data-i18n="no3d">La 3D n'a pas pu démarrer sur cet appareil : voici le royaume en image, et tout le contenu reste lisible.</p>
 
   <noscript><p class="sans-3d-note visible">La 3D a besoin de JavaScript. Le <a href="../">portfolio classique</a> fonctionne sans.</p></noscript>
 </body>
