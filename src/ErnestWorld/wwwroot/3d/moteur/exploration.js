@@ -224,8 +224,8 @@ export class Exploration {
       }
     }
     this.camPos.set(this.cible.x + Math.sin(this.yaw) * cp * d, this.cible.y + sp * d, this.cible.z + Math.cos(this.yaw) * cp * d);
-    const sol = this.carte.hauteur(this.camPos.x, this.camPos.z, -1e9) + 0.4;
-    if (this.camPos.y < sol) this.camPos.y = sol;
+    const solCamera = this.carte.hauteur(this.camPos.x, this.camPos.z, -1e9) + 0.4;
+    if (this.camPos.y < solCamera) this.camPos.y = solCamera;
     // Lissage propre au mode libre (le moteur fait lui-même le fondu depuis la caméra de la visite)
     if (this.premier || !this.camLisse) { this.camLisse = this.camPos.clone(); this.premier = false; }
     else this.camLisse.lerp(this.camPos, Math.min(1, dt * 10));
