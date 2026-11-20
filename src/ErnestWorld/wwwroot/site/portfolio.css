@@ -662,3 +662,122 @@ body { -webkit-font-smoothing: antialiased; }
 .filter { font: 400 11.5px/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
 .pill-game { color: var(--rose); border-color: rgba(233, 164, 102, 0.45); background: rgba(233, 164, 102, 0.08); }
 .timeline li.is-current::before { box-shadow: 0 0 0 4px rgba(233, 164, 102, 0.18); }
+
+/* =========================================================================
+   Accueil cinématique (novembre 2026, suite)
+   L'accueil devient un plan de cinéma : le royaume en 3D en plein écran derrière le nom, en très grand.
+   La version 3D est mise en avant autant que le jeu (bouton braise, carte dédiée, grande section).
+   ========================================================================= */
+
+.btn-3d { color: #14100c; background: var(--rose); border: 1px solid var(--rose); }
+.btn-3d:hover { color: #14100c; background: var(--ink); border-color: var(--ink); }
+.btn-3d svg { fill: none; stroke: currentColor; }
+.point-3d { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pouls-3d 2.4s ease-in-out infinite; }
+@keyframes pouls-3d { 50% { opacity: 0.3; } }
+
+/* L'en-tête flotte sur l'image tant qu'on n'a pas défilé */
+.site-header:not(.is-scrolled) {
+  background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+  --ink: #f3ede2; --ink-2: rgba(243, 237, 226, 0.8); --ink-3: rgba(243, 237, 226, 0.6);
+  --line: rgba(243, 237, 226, 0.2); --line-2: rgba(243, 237, 226, 0.4); color: var(--ink);
+}
+
+.hero-cinema {
+  --ink: #f3ede2; --ink-2: rgba(243, 237, 226, 0.82); --ink-3: rgba(243, 237, 226, 0.6);
+  --line: rgba(243, 237, 226, 0.18); --line-2: rgba(243, 237, 226, 0.42); --accent-text: #e9a466;
+  position: relative; isolation: isolate; overflow: hidden; color: var(--ink);
+  min-height: 100svh; margin-top: calc(-1 * var(--header-h, 64px));
+  padding: calc(var(--header-h, 64px) + 72px) 0 40px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+}
+.hero-media { position: absolute; inset: 0; z-index: -1; background: #120d14; }
+.hero-media img { width: 100%; height: 100%; object-fit: cover; object-position: 62% 45%; animation: travelling 30s ease-in-out infinite alternate; }
+.hero-media::after {
+  content: ""; position: absolute; inset: 0;
+  background:
+    linear-gradient(90deg, rgba(14, 10, 12, 0.86) 0%, rgba(14, 10, 12, 0.5) 42%, rgba(14, 10, 12, 0.05) 72%),
+    linear-gradient(0deg, rgba(14, 10, 12, 0.92) 0%, rgba(14, 10, 12, 0) 42%),
+    linear-gradient(180deg, rgba(14, 10, 12, 0.6) 0%, rgba(14, 10, 12, 0) 24%);
+}
+@keyframes travelling { from { transform: scale(1.04); } to { transform: scale(1.13) translate3d(-1.5%, -1%, 0); } }
+
+.hero-cinema-inner { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: end; gap: 56px; }
+.hero-cinema .hero-text { max-width: 780px; }
+.hero-cinema h1 { margin: 26px 0 22px; }
+.hero-cinema h1 .gradient-text { display: block; font-size: clamp(4.4rem, 11.5vw, 10.8rem); line-height: 0.84; letter-spacing: -0.045em; color: var(--ink); }
+.hero-cinema h1 em { font-style: italic; }
+.hero-cinema .hero-role { color: var(--accent-text); }
+.hero-cinema .hero-lead { max-width: 54ch; color: var(--ink-2); font-size: 1.08rem; }
+.hero-cinema .status { border-color: var(--line-2); color: var(--ink-2); }
+.hero-cinema .actions { align-items: center; margin-top: 34px; }
+.hero-cinema .btn-ghost { color: var(--ink); border-color: var(--line-2); }
+.hero-cinema .btn-ghost:hover { background: var(--ink); color: #14100c; }
+.lien-bas {
+  margin-left: 10px; padding-bottom: 4px; color: var(--ink-2); text-decoration: none; border-bottom: 1px solid var(--line-2);
+  font: 400 12px/1 var(--mono); letter-spacing: 0.09em; text-transform: uppercase;
+}
+.lien-bas:hover { color: var(--ink); border-color: var(--ink); }
+
+.carte-3d {
+  display: grid; gap: 12px; padding: 22px 22px 20px; color: var(--ink); text-decoration: none;
+  background: rgba(16, 11, 14, 0.5); border: 1px solid var(--line-2); border-top: 2px solid var(--rose);
+  -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
+  transition: background 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.carte-3d:hover { background: rgba(16, 11, 14, 0.72); transform: translateY(-4px); }
+.carte-3d-haut { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.carte-3d-tag { padding: 3px 8px; background: var(--rose); color: #14100c; font: 400 10.5px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.carte-3d-meta { color: var(--ink-3); font: 400 10.5px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.carte-3d-titre { font: italic 400 2.5rem/1 var(--head); letter-spacing: -0.02em; }
+.carte-3d-texte { color: var(--ink-2); font-size: 14.5px; line-height: 1.5; }
+.carte-3d-cta { padding-top: 12px; border-top: 1px solid var(--line); color: var(--rose); font: 400 12px/1 var(--mono); letter-spacing: 0.09em; text-transform: uppercase; }
+
+.hero-cinema .stats { gap: 0; margin-top: 52px; border-top: 1px solid var(--line); }
+.hero-cinema .stats li { padding: 16px 22px 0; border: 0; border-left: 1px solid var(--line); background: none; }
+.hero-cinema .stats li:first-child { padding-left: 0; border-left: 0; }
+.hero-cinema .stats span { color: var(--ink-3); }
+
+/* Titres de section plus grands, posés sur un filet, comme une revue */
+.section { padding: 128px 0; }
+.section-head { max-width: 980px; margin-bottom: 56px; padding-top: 22px; border-top: 1px solid var(--line); }
+.section-head.center { border-top: 0; }
+.section h2 { font-size: clamp(2.6rem, 6vw, 5.4rem); line-height: 0.96; letter-spacing: -0.03em; }
+.section h2 em { font-style: italic; }
+
+/* Les deux autres versions, en grandes images */
+.versions-grille { display: grid; grid-template-columns: 1.3fr 1fr; gap: 32px; align-items: start; }
+.version { display: grid; gap: 14px; color: var(--ink); text-decoration: none; }
+.version-image { display: block; overflow: hidden; aspect-ratio: 16 / 10; border: 1px solid var(--line); background: var(--bg-2); }
+.version-image img { width: 100%; height: 100%; object-fit: cover; transition: transform 1.2s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.version:hover .version-image img { transform: scale(1.05); }
+.version-meta { display: flex; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--ink-3); font: 400 11.5px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; }
+.version-meta span:first-child { color: var(--accent-text); }
+.version-titre { font: 400 clamp(2.1rem, 3.8vw, 3.4rem)/1 var(--head); letter-spacing: -0.025em; }
+.version:first-child .version-titre { font-style: italic; }
+.version-texte { max-width: 54ch; color: var(--ink-2); }
+.version-cta { color: var(--accent-text); font: 400 12px/1 var(--mono); letter-spacing: 0.09em; text-transform: uppercase; }
+.version:hover .version-cta { color: var(--ink); }
+
+@media (max-width: 920px) {
+  .hero-cinema-inner { grid-template-columns: 1fr; gap: 32px; }
+  .carte-3d { max-width: 460px; }
+  .versions-grille { grid-template-columns: 1fr; }
+  .header-tools .btn-ghost.play-link span { display: none; }
+}
+@media (max-width: 600px) {
+  .hero-cinema { padding-top: calc(var(--header-h, 64px) + 40px); }
+  .hero-cinema h1 .gradient-text { font-size: clamp(3.6rem, 18vw, 5rem); }
+  .hero-cinema .stats { grid-template-columns: 1fr 1fr; }
+  .hero-cinema .stats li:nth-child(3) { padding-left: 0; border-left: 0; }
+  .hero-media img { object-position: 70% 40%; }
+  .section { padding: 88px 0; }
+  .lien-bas { margin: 8px 0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-media img, .point-3d { animation: none; }
+}
+/* Téléphone : le bouton de la 3D se réduit à « 3D » pour laisser la place au nom */
+@media (max-width: 600px) {
+  .header-tools .btn-3d [data-i18n="header.3d"] { font-size: 0; }
+  .header-tools .btn-3d [data-i18n="header.3d"]::after { content: "3D"; font-size: 11.5px; }
+}
