@@ -254,6 +254,14 @@ export class Peuple {
       coude = -0.3;
       rebond = Math.abs(c) * 0.035;
       penche = 0.06;
+    } else if (h.anim === "saut") {
+      jambe = 0.35;
+      genou = 0.75;
+      bras = -0.9;
+      brasD = -0.9;
+      coude = coudeD = -0.7;
+      ecartG = ecartD = 0.25;
+      penche = 0.12;
     } else if (h.anim === "salut") {
       brasD = -2.6 + Math.sin(t * 7.0) * 0.05;
       coudeD = -0.5 + Math.sin(t * 7.0) * 0.45;

@@ -338,6 +338,12 @@ button.bouton { cursor: pointer; font-family: var(--mono); }
   font: 11.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
 }
 .tactile .invite { bottom: max(150px, calc(env(safe-area-inset-bottom) + 120px)); }
+.bouton-sauter { display: none; }
+.tactile.mode-libre .bouton-sauter {
+  display: block; position: fixed; z-index: 22; right: 22px; bottom: max(140px, calc(env(safe-area-inset-bottom) + 112px));
+  width: 64px; height: 64px; border-radius: 50%; border: 1px solid var(--filet-fort); background: rgba(16, 11, 16, 0.55); color: var(--creme);
+  font: 10.5px var(--mono); letter-spacing: 0.08em; text-transform: uppercase;
+}
 
 .dialogue {
   position: fixed; z-index: 24; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); transform: translateX(-50%);

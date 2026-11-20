@@ -90,6 +90,24 @@ def carte_de_marche(sortie):
         j0, j1 = max(0, int((oy - orr + DEMI) / PAS)), min(n, int((oy + orr + DEMI) / PAS) + 1)
         if i1 > i0 and j1 > j0:
             bloque[j0:j1, i0:i1] |= np.hypot(X[j0:j1, i0:i1] - ox, Y[j0:j1, i0:i1] - oy) < orr
+    # Passages des portes : chaque porterie est marquée en entier comme un bâtiment (tours et corps),
+    # on rouvre son passage voûté, sur toute sa profondeur et un peu au-delà
+    # Les abords des portes et des seuils sont des rampes : la pente y est permise (la butte du château
+    # monte de six mètres juste devant la porte intérieure)
+    rampes = np.zeros((n, n), dtype=bool)
+    for nom, m in plan.REMPARTS.items():
+        ouverture = 5.6 if nom != "interieur" else 4.6
+        prof = m["epaisseur"] + 3.0
+        for a in plan.PORTES[nom]:
+            cx, cy = polaire(m["rayon"], a)
+            r = _cases_rect(cx, cy, a - math.pi / 2, ouverture / 2 - 0.45, prof / 2 + 1.5, n, X, Y)
+            if r:
+                (sj, si), masque, _, _ = r
+                bloque[sj, si] &= ~masque
+            r = _cases_rect(cx, cy, a - math.pi / 2, ouverture / 2 - 0.45, prof / 2 + 8.0, n, X, Y)
+            if r:
+                (sj, si), masque, _, _ = r
+                rampes[sj, si] |= masque
     # Hauteur du sol des cases restées libres
     libres = np.argwhere(~bloque)
     for j, i in libres:
@@ -116,13 +134,14 @@ def carte_de_marche(sortie):
         dedans = (np.abs(u) < w / 2 - 0.55) & (v > 0.55) & (v < dd - 0.55)
         mur = masque & ~dedans
         porte = (u > b["porte"][0] + 0.3) & (u < b["porte"][1] - 0.3) & (v < 1.0) & (v > -0.6)
+        rampes[sj, si] |= (u > b["porte"][0] + 0.3) & (u < b["porte"][1] - 0.3) & (v < 1.6) & (v > -1.6)
         meubles = bloque[sj, si] & dedans
         bloque[sj, si] = np.where(mur & ~porte, True, np.where(dedans, meubles, bloque[sj, si]))
         hauteur[sj, si] = np.where(dedans | porte, sol, hauteur[sj, si])
         interieur[sj, si] = np.where(dedans, 2 | (b["zone"] << 2), interieur[sj, si])
     # Pentes trop raides
     gy, gx = np.gradient(np.nan_to_num(hauteur, nan=0.0), PAS)
-    bloque |= np.hypot(gx, gy) > 1.1
+    bloque |= (np.hypot(gx, gy) > 1.1) & ~rampes
     bloque |= np.isnan(hauteur)
     # Encodage RGBA (ligne 0 = y le plus grand, comme une image vue de dessus avec le nord en haut)
     h = np.clip((np.nan_to_num(hauteur, nan=H_MIN) - H_MIN) / (H_MAX - H_MIN), 0, 1)
