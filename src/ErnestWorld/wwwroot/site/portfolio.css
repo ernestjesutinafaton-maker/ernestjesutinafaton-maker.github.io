@@ -781,3 +781,15 @@ body { -webkit-font-smoothing: antialiased; }
   .header-tools .btn-3d [data-i18n="header.3d"] { font-size: 0; }
   .header-tools .btn-3d [data-i18n="header.3d"]::after { content: "3D"; font-size: 11.5px; }
 }
+
+/* Certificats : date, lien de vérification, et image du certificat LinkedIn */
+.cert-image { padding-top: 0; overflow: hidden; }
+.cert-apercu { display: block; margin: 0 -22px 16px; border-bottom: 1px solid var(--line); background: #fff; overflow: hidden; }
+.cert-apercu img { display: block; width: 100%; height: auto; transition: transform 0.8s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.cert-image:hover .cert-apercu img { transform: scale(1.03); }
+.cert-id + .cert-pied, .chips + .cert-id { margin-top: 12px; }
+.cert-pied { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: auto 0 0 !important;
+  padding-top: 12px; border-top: 1px solid var(--line); font: 400 11px/1.4 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.cert-lien { color: var(--accent-text); text-decoration: none; white-space: nowrap; }
+.cert-lien:hover { color: var(--ink); }
+.cert-pied time { white-space: nowrap; }
