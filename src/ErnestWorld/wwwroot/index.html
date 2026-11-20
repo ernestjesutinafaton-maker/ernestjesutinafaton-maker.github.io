@@ -95,7 +95,11 @@
           <svg class="icon-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           <svg class="icon-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg>
         </button>
-        <a class="btn btn-play btn-small play-link" href="jeu/">
+        <a class="btn btn-3d btn-small" href="3d/">
+          <span class="point-3d" aria-hidden="true"></span>
+          <span data-i18n="header.3d">Royaume 3D</span>
+        </a>
+        <a class="btn btn-ghost btn-small play-link" href="jeu/">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h4M8 10v4M15 11h.01M18 13h.01"/><path d="M17.3 5H6.7a4 4 0 0 0-4 3.6l-.7 6.9A3 3 0 0 0 5 19c1 0 1.9-.5 2.4-1.3L8.6 16h6.8l1.2 1.7A3 3 0 0 0 19 19a3 3 0 0 0 3-3.5l-.7-6.9a4 4 0 0 0-4-3.6z"/></svg>
           <span data-i18n="header.play">Jouer</span>
         </a>
@@ -109,108 +113,87 @@
   <main id="contenu">
 
     <!-- ================= ACCUEIL ================= -->
-    <section class="hero" id="accueil">
-      <div class="hero-bg" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+    <section class="hero hero-cinema" id="accueil">
+      <!-- Le royaume en 3D, rendu par Blender : le fond de l'accueil, comme un plan de cinéma -->
+      <div class="hero-media" aria-hidden="true">
+        <img src="3d/assets/affiche.webp" width="1920" height="1080" alt="" decoding="async" fetchpriority="high">
+      </div>
 
-      <div class="container hero-grid">
+      <div class="container hero-cinema-inner">
         <div class="hero-text">
           <p class="status"><span class="dot" aria-hidden="true"></span><span data-i18n="hero.status">Disponible pour un stage de 4 à 5 semaines</span></p>
 
           <h1>
             <span class="hero-hello" data-i18n="hero.hello">Bonjour, je suis</span>
-            <span class="gradient-text">Ernest Afaton</span>
+            <span class="gradient-text">Ernest <em>Afaton</em></span>
           </h1>
 
           <p class="hero-role mono" data-i18n="hero.role">Développeur web et mobile · Systèmes et réseaux · IoT</p>
 
           <p class="hero-lead" data-i18n="hero.lead">
             Étudiant en 2<sup>e</sup> année de Bachelor Informatique à l'EPSI Lyon. Je construis des applications
-            complètes, je monte des infrastructures et je prototype des objets connectés. Mon portfolio existe
-            aussi en version jeu : une île en 3D à explorer.
+            complètes, je monte des infrastructures et je prototype des objets connectés. Mon portfolio se visite
+            aussi en 3D, comme un film, et se joue comme un jeu.
           </p>
 
           <div class="actions">
-            <a class="btn btn-play btn-large play-link" href="jeu/">
-              <span class="play-ring" aria-hidden="true"></span>
+            <a class="btn btn-3d btn-large" href="3d/">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 20 7.4v9.2l-8 4.6-8-4.6V7.4z"/><path d="M4 7.4l8 4.6 8-4.6M12 12v9.2"/></svg>
+              <span data-i18n="hero.enter3d">Entrer dans le royaume 3D</span>
+            </a>
+            <a class="btn btn-ghost btn-large play-link" href="jeu/">
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
               <span data-i18n="hero.play">Jouer mon portfolio</span>
             </a>
-            <a class="btn btn-ghost btn-large" href="#projets">
-              <span data-i18n="hero.projects">Voir mes projets</span>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
-            </a>
+            <a class="lien-bas" href="#projets"><span data-i18n="hero.projects">Voir mes projets</span> <span aria-hidden="true">↓</span></a>
           </div>
+        </div>
 
-          <a class="lien-3d" href="3d/">
-            <span class="lien-3d-badge" data-i18n="hero.new3dBadge">Nouveau</span>
-            <span data-i18n="hero.new3d">L'île en 3D, modélisée dans Blender : à parcourir au défilement</span>
-            <span aria-hidden="true">→</span>
-          </a>
+        <!-- La version 3D, mise en avant : on ne doit pas croire que seul « Jouer » mène quelque part -->
+        <a class="carte-3d" href="3d/">
+          <span class="carte-3d-haut">
+            <span class="carte-3d-tag" data-i18n="hero.new3dBadge">Nouveau</span>
+            <span class="carte-3d-meta" data-i18n="hero.card3dMeta">Version cinématique · Blender</span>
+          </span>
+          <span class="carte-3d-titre" data-i18n="hero.card3dTitle">Le royaume en 3D</span>
+          <span class="carte-3d-texte" data-i18n="hero.card3dText">Visite guidée au défilement, ou promenade libre : entre dans les bâtiments, parle aux habitants, croise les autres visiteurs en direct.</span>
+          <span class="carte-3d-cta"><span data-i18n="hero.card3dCta">Lancer la visite</span> <span aria-hidden="true">→</span></span>
+        </a>
+      </div>
 
+      <div class="container">
           <ul class="stats" data-i18n-attr="aria-label=stats.label" aria-label="Quelques chiffres">
             <li><strong>16</strong><span data-i18n="stats.projects">projets</span></li>
             <li><strong>10</strong><span data-i18n="stats.certs">certificats obtenus</span></li>
             <li><strong data-i18n="stats.iotNum">2<sup>e</sup></strong><span data-i18n="stats.iot">Workshop National IoT</span></li>
             <li><strong data-i18n="stats.nasNum">99,9 %</strong><span data-i18n="stats.nas">disponibilité du NAS en stage</span></li>
           </ul>
-        </div>
-
-        <!-- Aperçu du jeu : toute la carte mène à /jeu/ -->
-        <a class="game-card play-link" href="jeu/" data-i18n-attr="aria-label=game.cardLabel" aria-label="Jouer mon portfolio : ouvrir l'île en 3D">
-          <span class="game-bar" aria-hidden="true">
-            <span class="dots"><i></i><i></i><i></i></span>
-            <span class="game-name" data-i18n="game.name">Le Monde d'Ernest</span>
-            <span class="game-badge" data-i18n="game.badge">version jeu</span>
-          </span>
-          <span class="game-screen">
-            <img src="site/ile.webp" width="1200" height="750" alt="L'île en 3D du portfolio, vue de haut" data-i18n-attr="alt=game.alt;src=game.img" decoding="async" fetchpriority="high">
-            <span class="game-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z"/></svg></span>
-            <span class="game-caption">
-              <strong data-i18n="game.caption">Mon portfolio est aussi un jeu</strong>
-              <span class="game-chips">
-                <span data-i18n="game.places">16 lieux</span><span data-i18n="game.bosses">5 boss</span><span data-i18n="game.questions">49 questions</span><span data-i18n="game.achievements">16 succès</span>
-              </span>
-            </span>
-          </span>
-          <span class="float-toast t1" aria-hidden="true"><b data-i18n="toast.ach">Succès débloqué</b><span data-i18n="toast.achText">Cartographe · +40 XP</span></span>
-          <span class="float-toast t2" aria-hidden="true"><b data-i18n="toast.boss">Boss réveillé</b><span data-i18n="toast.bossText">Le Dragon de la Dette Technique</span></span>
-        </a>
       </div>
     </section>
 
-    <!-- ================= LE JEU ================= -->
-    <section class="section section-game" id="jeu-intro" aria-labelledby="game-title">
+    <!-- ================= LES AUTRES VERSIONS ================= -->
+    <section class="section section-versions" id="jeu-intro" aria-labelledby="versions-title">
       <div class="container">
-        <header class="section-head center reveal">
-          <p class="eyebrow" data-i18n="gameSec.eyebrow">Le Monde d'Ernest</p>
-          <h2 id="game-title" data-i18n="gameSec.title">Envie d'explorer plutôt que de lire ?</h2>
-          <p class="section-sub" data-i18n="gameSec.sub">Tout ce qui est sur cette page existe aussi sous forme de jeu, écrit en C# avec Blazor et Three.js.</p>
+        <header class="section-head reveal">
+          <p class="eyebrow" data-i18n="versions.eyebrow">Au-delà de cette page</p>
+          <h2 id="versions-title" data-i18n="versions.title">Deux autres façons de <em>découvrir</em> mon parcours.</h2>
         </header>
 
-        <ol class="steps">
-          <li class="card step reveal">
-            <span class="step-num">1</span>
-            <h3 data-i18n="step1.title">Explore l'île</h3>
-            <p data-i18n="step1.text">16 bâtiments : chaque lieu est un projet, une compétence ou une étape de mon parcours.</p>
-          </li>
-          <li class="card step reveal">
-            <span class="step-num">2</span>
-            <h3 data-i18n="step2.title">Affronte 5 boss</h3>
-            <p data-i18n="step2.text">Des questions sur mes projets et sur le code, avec des cœurs, des combos et des coups critiques.</p>
-          </li>
-          <li class="card step reveal">
-            <span class="step-num">3</span>
-            <h3 data-i18n="step3.title">Débloque la quête finale</h3>
-            <p data-i18n="step3.text">16 succès, 8 rangs à gagner, et un phare où me recruter à la fin de l'aventure.</p>
-          </li>
-        </ol>
-
-        <div class="center reveal">
-          <a class="btn btn-play btn-large play-link" href="jeu/">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5.5v13l10.5-6.5z"/></svg>
-            <span data-i18n="gameSec.cta">Lancer le jeu</span>
+        <div class="versions-grille">
+          <a class="version reveal" href="3d/">
+            <span class="version-image"><img src="3d/assets/affiche.webp" width="1920" height="1080" alt="Le royaume en 3D, vu du ciel au coucher du soleil" data-i18n-attr="alt=v3d.alt" loading="lazy" decoding="async"></span>
+            <span class="version-meta"><span>01</span> <span data-i18n="v3d.meta">Version cinématique · Blender et Three.js</span></span>
+            <span class="version-titre" data-i18n="v3d.title">Le royaume en 3D</span>
+            <span class="version-texte" data-i18n="v3d.text">Un royaume fortifié sur une île volante, modélisé et éclairé dans Blender. Suis la visite guidée en faisant défiler la page, ou promène-toi librement : chaque bâtiment s'ouvre, et les habitants parlent de mes projets.</span>
+            <span class="version-cta"><span data-i18n="v3d.cta">Entrer dans le royaume</span> <span aria-hidden="true">→</span></span>
           </a>
-          <p class="small muted" data-i18n="gameSec.note">Sans inscription · sur ordinateur et sur mobile · progression gardée dans ton navigateur</p>
+          <a class="version reveal play-link" href="jeu/">
+            <span class="version-image"><img src="site/ile.webp" width="1200" height="750" alt="L'île de la version jeu, vue de haut" data-i18n-attr="alt=game.alt;src=game.img" loading="lazy" decoding="async"></span>
+            <span class="version-meta"><span>02</span> <span data-i18n="vjeu.meta">Version jeu · C# et Blazor</span></span>
+            <span class="version-titre" data-i18n="game.name">Le Monde d'Ernest</span>
+            <span class="version-texte" data-i18n="vjeu.text">16 lieux à explorer, 5 boss à affronter avec des questions sur mes projets, 16 succès à débloquer, et un phare où me recruter à la fin de l'aventure.</span>
+            <span class="version-cta"><span data-i18n="gameSec.cta">Lancer le jeu</span> <span aria-hidden="true">→</span></span>
+          </a>
         </div>
       </div>
     </section>
