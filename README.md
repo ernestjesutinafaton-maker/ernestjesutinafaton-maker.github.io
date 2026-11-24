@@ -15,6 +15,8 @@ Les trois versions existent en français et en anglais (bouton FR / EN, ou `?lan
 
 **Portfolio :** https://ernestjesutinafaton-maker.github.io · **Royaume en 3D :** https://ernestjesutinafaton-maker.github.io/3d/ · **Jeu :** https://ernestjesutinafaton-maker.github.io/jeu/
 
+**Mon CV (PDF) :** https://ernestjesutinafaton-maker.github.io/CV_Ernest_Afaton.pdf · je recherche un stage de 4 à 5 semaines.
+
 ### Le royaume en 3D (`/3d/`)
 
 [![Le royaume en 3D : vue d'ensemble au coucher du soleil, la grande salle et ses cristaux (projets), le mode libre avec un dialogue et un autre visiteur, le phare (contact)](docs/apercu-3d.jpg)](https://ernestjesutinafaton-maker.github.io/3d/)
