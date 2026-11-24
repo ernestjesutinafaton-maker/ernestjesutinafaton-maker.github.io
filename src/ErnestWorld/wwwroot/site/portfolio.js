@@ -27,6 +27,8 @@
     "header.play": "Play",
     "header.3d": "3D kingdom",
     "menu.label": "Open the menu",
+    "cv.label": "Open my resume (PDF)",
+    "cv.btn": "My resume (PDF)",
 
     "hero.status": "Available for a 4 to 5 week internship",
     "hero.hello": "Hi, I'm",
@@ -260,6 +262,7 @@
     "contact.mail": "Send an email",
     "contact.copy": "Copy",
 
+    "footer.cv": "Resume (PDF)",
     "footer.play": "Game version",
     "footer.3d": "3D version",
     "footer.journal": "Journal",

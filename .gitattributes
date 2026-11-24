@@ -1,0 +1,2 @@
+# Les PDF (le CV) sont des fichiers binaires : Git ne doit jamais convertir leurs fins de ligne.
+*.pdf binary

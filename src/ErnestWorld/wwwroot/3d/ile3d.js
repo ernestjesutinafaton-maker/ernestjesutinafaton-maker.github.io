@@ -143,6 +143,7 @@ const EN = {
   "contact.title2": "Let's talk.",
   "contact.text": "I'm looking for a 4 to 5 week internship in software development or systems and networks. The easiest way to reach me is by email or on LinkedIn.",
   "contact.mail": "Send an email",
+  "contact.cv": "My resume (PDF)",
   "contact.classic": "Classic portfolio",
   "contact.game": "Game version",
   "contact.how": "How the kingdom is made",

@@ -793,3 +793,12 @@ body { -webkit-font-smoothing: antialiased; }
 .cert-lien { color: var(--accent-text); text-decoration: none; white-space: nowrap; }
 .cert-lien:hover { color: var(--ink); }
 .cert-pied time { white-space: nowrap; }
+
+/* Le CV (PDF) dans l'en-tête, seulement là où il tient : entre 921 et 1199 px le menu complet prend toute la largeur,
+   et sur téléphone il n'y a plus de place à côté du menu. Sur téléphone, le lien passe dans le menu replié. */
+.nav-cv { display: none; }
+@media (min-width: 921px) and (max-width: 1199px) { .header-tools .btn-cv { display: none; } }
+@media (max-width: 600px) {
+  .header-tools .btn-cv { display: none; }
+  .nav.is-open .nav-cv { display: block; }
+}
